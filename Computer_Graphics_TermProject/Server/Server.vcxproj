@@ -145,6 +145,10 @@
   <ItemGroup>
     <ClCompile Include="ServerMain.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\3D_BounceBall\Protocol.h" />
+    <ClInclude Include="Common.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
