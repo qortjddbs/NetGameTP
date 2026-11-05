@@ -143,6 +143,7 @@
     <ClCompile Include="GameWorld.cpp" />
     <ClCompile Include="InputHandler.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Network.cpp" />
     <ClCompile Include="ParentModel.cpp" />
     <ClCompile Include="ObjModel.cpp" />
     <ClCompile Include="ObjRead.cpp" />
@@ -155,11 +156,14 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="GameWorld.h" />
     <ClInclude Include="InputHandler.h" />
+    <ClInclude Include="MapData.h" />
+    <ClInclude Include="Network.h" />
     <ClInclude Include="ParentModel.h" />
     <ClInclude Include="ObjModel.h" />
     <ClInclude Include="ObjRead.h" />
     <ClInclude Include="PathTrace.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="Protocol.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="Headers.h" />

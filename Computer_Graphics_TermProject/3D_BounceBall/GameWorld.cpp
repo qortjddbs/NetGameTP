@@ -4,6 +4,7 @@
 #include <mmsystem.h>
 #include <string>
 #include "stb_image.h"
+#include "MapData.h"
 #pragma comment(lib, "winmm.lib")
 
 GameWorld::GameWorld(GLuint shaderID)
@@ -834,6 +835,15 @@ void GameWorld::createArrowBlocks()
 
 void GameWorld::createStars()
 {
+	for (int i = 0; i < STAR_COUNT; ++i) {
+		STAR* s = new STAR();
+		s->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
+		s->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
+		s->setTranslation(glm::vec3(STAR_POS[i][0], STAR_POS[i][1], STAR_POS[i][2]));
+		s->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
+		s->m_id = i;
+		stars_.push_back(s);
+	}
 	//// 별 1: 시작 지점 (튜토리얼)
 	//STAR* star1 = new STAR();
 	//star1->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
@@ -842,61 +852,61 @@ void GameWorld::createStars()
 	//star1->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
 	//stars_.push_back(star1);
 
-	// 별 2: 징검다리 중간 (어려움)
-	STAR* star2 = new STAR();
-	star2->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
-	star2->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
-	star2->setTranslation(glm::vec3(0.0f, 0.5f, -10.0f));
-	star2->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
-	stars_.push_back(star2);
+	//// 별 2: 징검다리 중간 (어려움)
+	//STAR* star2 = new STAR();
+	//star2->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
+	//star2->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
+	//star2->setTranslation(glm::vec3(0.0f, 0.5f, -10.0f));
+	//star2->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
+	//stars_.push_back(star2);
 
-	// 별 3: 첫 화살표 착지 지점
-	STAR* star3 = new STAR();
-	star3->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
-	star3->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
-	star3->setTranslation(glm::vec3(0.0f, 8.0f, -45.0f));
-	star3->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
-	stars_.push_back(star3);
+	//// 별 3: 첫 화살표 착지 지점
+	//STAR* star3 = new STAR();
+	//star3->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
+	//star3->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
+	//star3->setTranslation(glm::vec3(0.0f, 8.0f, -45.0f));
+	//star3->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
+	//stars_.push_back(star3);
 
-	// 별 4: 부서지는 다리 끝
-	STAR* star4 = new STAR();
-	star4->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
-	star4->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
-	star4->setTranslation(glm::vec3(0.0f, 2.0f, -60.0f));
-	star4->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
-	stars_.push_back(star4);
+	//// 별 4: 부서지는 다리 끝
+	//STAR* star4 = new STAR();
+	//star4->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
+	//star4->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
+	//star4->setTranslation(glm::vec3(0.0f, 2.0f, -60.0f));
+	//star4->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
+	//stars_.push_back(star4);
 
-	// 별 5: 중간 전환 플랫폼
-	STAR* star5 = new STAR();
-	star5->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
-	star5->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
-	star5->setTranslation(glm::vec3(-3.0f, 5.0f, -80.0f));
-	star5->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
-	stars_.push_back(star5);
+	//// 별 5: 중간 전환 플랫폼
+	//STAR* star5 = new STAR();
+	//star5->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
+	//star5->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
+	//star5->setTranslation(glm::vec3(-3.0f, 5.0f, -80.0f));
+	//star5->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
+	//stars_.push_back(star5);
 
-	// 별 6: 가시 미로 위 (매우 어려움)
-	STAR* star6 = new STAR();
-	star6->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
-	star6->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
-	star6->setTranslation(glm::vec3(0.0f, 10.0f, -107.0f));
-	star6->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
-	stars_.push_back(star6);
+	//// 별 6: 가시 미로 위 (매우 어려움)
+	//STAR* star6 = new STAR();
+	//star6->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
+	//star6->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
+	//star6->setTranslation(glm::vec3(0.0f, 10.0f, -107.0f));
+	//star6->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
+	//stars_.push_back(star6);
 
-	// 별 7: 최종 계단 중간
-	STAR* star7 = new STAR();
-	star7->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
-	star7->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
-	star7->setTranslation(glm::vec3(0.0f, 12.0f, -130.0f));
-	star7->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
-	stars_.push_back(star7);
+	//// 별 7: 최종 계단 중간
+	//STAR* star7 = new STAR();
+	//star7->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
+	//star7->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
+	//star7->setTranslation(glm::vec3(0.0f, 12.0f, -130.0f));
+	//star7->setSelfScale(glm::vec3(0.15f, 0.3f, 0.15f));
+	//stars_.push_back(star7);
 
-	// 별 8: 골인 지점 (보너스)
-	STAR* star8 = new STAR();
-	star8->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
-	star8->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
-	star8->setTranslation(glm::vec3(0.0f, 17.0f, -143.0f));
-	star8->setSelfScale(glm::vec3(0.2f, 0.4f, 0.2f)); // 큰 별
-	stars_.push_back(star8);
+	//// 별 8: 골인 지점 (보너스)
+	//STAR* star8 = new STAR();
+	//star8->init("obj/star.obj", shaderProgramID_, 1.0f, 1.0f, 0.0f);
+	//star8->setRotation(glm::vec3(90.0f, 0.0f, 0.0f));
+	//star8->setTranslation(glm::vec3(0.0f, 17.0f, -143.0f));
+	//star8->setSelfScale(glm::vec3(0.2f, 0.4f, 0.2f)); // 큰 별
+	//stars_.push_back(star8);
 }
 
 void GameWorld::resetBreakableBlocks()

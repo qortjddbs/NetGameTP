@@ -43,6 +43,12 @@
     <Filter Include="헤더 파일\glsl">
       <UniqueIdentifier>{3886c33b-3dc3-44b1-abd2-fbeb58be7ea5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="헤더 파일\Shared">
+      <UniqueIdentifier>{f0e1c47b-51f4-479b-b876-746e12eedfed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Network">
+      <UniqueIdentifier>{d408aea4-270d-4b3a-90a7-5ae695920d58}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -77,6 +83,9 @@
     </ClCompile>
     <ClCompile Include="PathTrace.cpp">
       <Filter>소스 파일\Model\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="Network.cpp">
+      <Filter>소스 파일\Network</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -118,6 +127,15 @@
     </ClInclude>
     <ClInclude Include="PathTrace.h">
       <Filter>소스 파일\Model\Player</Filter>
+    </ClInclude>
+    <ClInclude Include="Protocol.h">
+      <Filter>헤더 파일\Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="MapData.h">
+      <Filter>헤더 파일\Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="Network.h">
+      <Filter>소스 파일\Network</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

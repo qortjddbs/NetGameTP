@@ -71,4 +71,6 @@ public:
 	float getRadius() const override {
 		return 0.6f;  // 별 크기에 맞게 조정
 	}
+
+	int  m_id;        // 추가: 0 ~ STAR_COUNT-1
 };
