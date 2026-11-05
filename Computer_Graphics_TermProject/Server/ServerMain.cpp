@@ -1,5 +1,9 @@
 ﻿#include "Common.h"
 #include "Protocol.h"
+#include "ServerData.h"
+
+Player g_players[MAX_PLAYER];
+CRITICAL_SECTION g_csPlayers;
 
 int main(int argc, char* argv[])
 {
@@ -9,6 +13,8 @@ int main(int argc, char* argv[])
 	WSADATA wsa;
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 		return 1;
+
+	InitializeCriticalSection(&g_csPlayers);
 
 	// 소켓 생성
 	SOCKET listen_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -55,5 +61,6 @@ int main(int argc, char* argv[])
 	// 정리
 	closesocket(listen_sock);
 	WSACleanup();
+	DeleteCriticalSection(&g_csPlayers);
 	return 0;
 }
