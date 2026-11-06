@@ -57,13 +57,81 @@ void SendPacket(int id, void* packet, int size)
 	LeaveCriticalSection(&g_csSend[id]);
 }
 
-// 접속 중인 모든 플레이어에게 전송합니다.
+// 접속 중인 모든 플레이어에게 전송
 void SendPacketToAll(void* packet, int size)
 {
-	// 접속 여부는 SendPacket 안에서 확인합니다.
+	// 접속 여부는 SendPacket 안에서 확인.
 	for (int id = 0; id < MAX_PLAYER; ++id) {
 		SendPacket(id, packet, size);
 	}
+}
+
+// 패킷 하나를 끝까지 받으면 true, 실패하면 false를 반환
+// sock: 데이터를 받을 소켓
+// buf: 받은 데이터를 저장할 버퍼
+bool RecvPacket(SOCKET sock, char* buf)
+{
+	if (buf == nullptr) return false;
+
+	// PacketHeader의 크기를 int로 저장. 현재 프로젝트에서는 2바이트
+	const int headerSize = static_cast<int>(sizeof(PacketHeader));
+
+	// 지금까지 받은 바이트 수. 아직 아무것도 안 받았으므로 0
+	int totalReceived = 0;
+
+	// 헤더 크기만큼 받을 때까지 반복
+	while (totalReceived < headerSize) {
+
+		// recv()가 실제로 받은 바이트 수를 received에 저장
+		int received = recv(
+			sock,                         // 이 소켓에서 받음
+			buf + totalReceived,          // 이미 받은 데이터 다음 위치에 저장
+			headerSize - totalReceived,   // 헤더에서 아직 못 받은 길이만큼 요청
+			0                             // 기본 수신 옵션
+		);
+
+		// 0이면 상대가 연결 종료, SOCKET_ERROR이면 수신 오류
+		if (received == 0 || received == SOCKET_ERROR)
+			return false;
+
+		// 이번에 받은 바이트 수를 누적
+		totalReceived += received;
+	}
+	// 여기까지 왔다면 buf에 헤더 2바이트가 들어 있음
+
+	// 헤더 정보를 담을 변수를 만들고 0으로 초기화
+	PacketHeader header{};
+
+	// buf에 받은 헤더 데이터를 header 변수로 복사
+	// 이제 header.size, header.type으로 값을 읽을 수 있음
+	memcpy(&header, buf, sizeof(header));
+
+	// 전체 패킷 크기가 헤더 크기보다 작으면 잘못된 패킷
+	if (header.size < headerSize)
+		return false;
+
+	// 헤더에 적힌 전체 패킷 크기를 저장. 헤더 + 본문 크기임
+	const int packetSize = header.size;
+
+	// 받은 양이 전체 패킷 크기가 될 때까지 반복
+	// totalReceived에는 이미 받은 헤더 크기인 2가 들어 있음
+	while (totalReceived < packetSize) {
+		int received = recv(
+			sock,                         // 같은 소켓에서 받음
+			buf + totalReceived,          // 이미 받은 데이터 바로 뒤에 저장
+			packetSize - totalReceived,   // 전체 패킷 중 아직 못 받은 길이만큼 요청
+			0                             // 기본 수신 옵션
+		);
+
+		// 연결 종료 또는 수신 오류면 실패
+		if (received == 0 || received == SOCKET_ERROR)
+			return false;
+
+		// 이번에 받은 바이트 수를 누적
+		totalReceived += received;
+	}
+
+	return true;
 }
 
 int main(int argc, char* argv[])
