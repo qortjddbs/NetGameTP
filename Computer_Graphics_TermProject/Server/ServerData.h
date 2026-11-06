@@ -16,4 +16,5 @@ struct Player {
 };
 
 extern Player g_players[MAX_PLAYER];
-extern CRITICAL_SECTION g_csPlayers;		// g_players를 읽고 쓸 때는 항상 이 안에서
+extern CRITICAL_SECTION g_csPlayers;			// g_players를 읽고 쓸 때는 항상 이 안에서
+extern CRITICAL_SECTION g_csSend[MAX_PLAYER];

@@ -5,14 +5,6 @@
 Player g_players[MAX_PLAYER];
 CRITICAL_SECTION g_csPlayers;
 
-// 패킷 전송에 필요한 플레이어 정보
-struct ServerPlayer {
-	SOCKET socket = INVALID_SOCKET; // 연결된 소켓
-	bool connected = false;        // 접속 여부
-};
-
-ServerPlayer g_players[MAX_PLAYER];
-CRITICAL_SECTION g_csPlayers;          // 플레이어 정보 보호
 CRITICAL_SECTION g_csSend[MAX_PLAYER]; // 같은 플레이어에게 보내는 패킷이 섞이지 않도록 보호
 
 // 한 명에게 전송
@@ -32,8 +24,8 @@ void SendPacket(int id, void* packet, int size)
 
 	// 접속 정보 복사
 	EnterCriticalSection(&g_csPlayers);
-	SOCKET clientSocket = g_players[id].socket;
-	bool connected = g_players[id].connected;
+	SOCKET clientSocket = g_players[id].m_sock;
+	bool connected = g_players[id].m_connect;
 	LeaveCriticalSection(&g_csPlayers);
 
 	if (connected && clientSocket != INVALID_SOCKET) {
@@ -167,7 +159,6 @@ int main(int argc, char* argv[])
 	if (retval == SOCKET_ERROR) err_quit("listen()");
 
 	// 임계영역 초기화
-	InitializeCriticalSection(&g_csPlayers);
 	for (int id = 0; id < MAX_PLAYER; ++id) {
 		InitializeCriticalSection(&g_csSend[id]);
 	}
@@ -202,7 +193,6 @@ int main(int argc, char* argv[])
 	for (int id = 0; id < MAX_PLAYER; ++id) {
 		DeleteCriticalSection(&g_csSend[id]);
 	}
-	DeleteCriticalSection(&g_csPlayers);
 	closesocket(listen_sock);
 	WSACleanup();
 	DeleteCriticalSection(&g_csPlayers);
