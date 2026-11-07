@@ -1,14 +1,10 @@
 ﻿#include "Common.h"
 #include "Protocol.h"
+#include "ServerData.h"
 
-// 패킷 전송에 필요한 플레이어 정보
-struct ServerPlayer {
-	SOCKET socket = INVALID_SOCKET; // 연결된 소켓
-	bool connected = false;        // 접속 여부
-};
+Player g_players[MAX_PLAYER];
+CRITICAL_SECTION g_csPlayers;
 
-ServerPlayer g_players[MAX_PLAYER];
-CRITICAL_SECTION g_csPlayers;          // 플레이어 정보 보호
 CRITICAL_SECTION g_csSend[MAX_PLAYER]; // 같은 플레이어에게 보내는 패킷이 섞이지 않도록 보호
 
 // 한 명에게 전송
@@ -28,8 +24,8 @@ void SendPacket(int id, void* packet, int size)
 
 	// 접속 정보 복사
 	EnterCriticalSection(&g_csPlayers);
-	SOCKET clientSocket = g_players[id].socket;
-	bool connected = g_players[id].connected;
+	SOCKET clientSocket = g_players[id].m_sock;
+	bool connected = g_players[id].m_connect;
 	LeaveCriticalSection(&g_csPlayers);
 
 	if (connected && clientSocket != INVALID_SOCKET) {
@@ -134,6 +130,54 @@ bool RecvPacket(SOCKET sock, char* buf)
 	return true;
 }
 
+// 클라이언트 id할당 후 리턴. 빈자리가 없으면 -1
+int AssignPlayerId(SOCKET sock)
+{
+	int id = -1;
+	EnterCriticalSection(&g_csPlayers);
+	for (int i = 0; i < MAX_PLAYER; ++i) {
+		if (false == g_players[i].m_connect) {
+			memset(&g_players[i], 0, sizeof(Player));		// 이전 사람 정보 지우기
+			g_players[i].m_sock = sock;
+			g_players[i].m_id = i;
+			g_players[i].m_connect = true;
+			id = i;
+			break;
+		}
+	}
+	LeaveCriticalSection(&g_csPlayers);
+	return id;
+}
+
+// 클라이언트 한 명 전용 쓰레드
+DWORD WINAPI ProcessClient(LPVOID arg)
+{
+	int id = (int)(INT_PTR)arg;
+
+	SOCKET sock;
+	EnterCriticalSection(&g_csPlayers);
+	sock = g_players[id].m_sock;
+	LeaveCriticalSection(&g_csPlayers);
+
+	printf("[쓰레드] Player %d 시작\n", id);
+
+	char buf[256];		// 헤더 -> size가 1바이트 이므로 패킷은 최대 255바이트
+	while (1) {
+		if (!RecvPacket(sock, buf)) break;		// 끊기거나 오류면 종료
+		PacketHeader* header = (PacketHeader*)buf;
+		printf("[Player %d] 패킷 수신: type=%d, size=%d\n", id, header->type, header->size);
+	}
+
+	// 임시 정리 - 11/11에 Disconnect(id)로 확장 예정
+	EnterCriticalSection(&g_csPlayers);
+	g_players[id].m_connect = false;
+	LeaveCriticalSection(&g_csPlayers);
+
+	closesocket(sock);
+	printf("[쓰레드] Player %d 종료\n", id);
+	return 0;
+}
+
 int main(int argc, char* argv[])
 {
 	int retval;
@@ -142,6 +186,8 @@ int main(int argc, char* argv[])
 	WSADATA wsa;
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 		return 1;
+
+	InitializeCriticalSection(&g_csPlayers);
 
 	// 소켓 생성
 	SOCKET listen_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -161,7 +207,6 @@ int main(int argc, char* argv[])
 	if (retval == SOCKET_ERROR) err_quit("listen()");
 
 	// 임계영역 초기화
-	InitializeCriticalSection(&g_csPlayers);
 	for (int id = 0; id < MAX_PLAYER; ++id) {
 		InitializeCriticalSection(&g_csSend[id]);
 	}
@@ -172,8 +217,9 @@ int main(int argc, char* argv[])
 	SOCKET client_sock;
 	struct sockaddr_in clientaddr;
 	int addrlen;
+
+	// accept()
 	while (1) {
-		// accept()
 		addrlen = sizeof(clientaddr);
 		client_sock = accept(listen_sock, (struct sockaddr*)&clientaddr, &addrlen);
 		if (client_sock == INVALID_SOCKET) {
@@ -187,8 +233,23 @@ int main(int argc, char* argv[])
 		printf("\n[TCP 서버] 클라이언트 접속: IP 주소=%s, 포트 번호=%d\n",
 			addr, ntohs(clientaddr.sin_port));
 
-		// 나중에 쓰레드 생성으로 바꿈
-		closesocket(client_sock);// 추후에 접속·수신 스레드 구현 때 연결
+		int id = AssignPlayerId(client_sock);
+		if (id == -1) {
+			printf("[서버] 자리 없음, 접속 거부\n"); 
+			closesocket(client_sock);
+			continue;
+		}
+
+		HANDLE hThread = CreateThread(NULL, 0, ProcessClient, (LPVOID)(INT_PTR)id, 0, NULL);
+		if (NULL == hThread) {
+			EnterCriticalSection(&g_csPlayers);
+			g_players[id].m_connect = false;
+			LeaveCriticalSection(&g_csPlayers);
+			closesocket(client_sock);
+		}
+		else {
+			CloseHandle(hThread);
+		}
 	}
 
 	// 정리
@@ -196,8 +257,8 @@ int main(int argc, char* argv[])
 	for (int id = 0; id < MAX_PLAYER; ++id) {
 		DeleteCriticalSection(&g_csSend[id]);
 	}
-	DeleteCriticalSection(&g_csPlayers);
 	closesocket(listen_sock);
 	WSACleanup();
+	DeleteCriticalSection(&g_csPlayers);
 	return 0;
 }
