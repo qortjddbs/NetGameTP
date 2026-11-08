@@ -5,6 +5,9 @@
 SOCKET g_sock = INVALID_SOCKET;
 HANDLE g_hRecvThread = NULL;
 
+int    g_myId = -1;
+HANDLE g_hLoginEvent = NULL;
+
 bool ConnectServer(const char* ip)
 {
     WSADATA wsa;
@@ -20,13 +23,14 @@ bool ConnectServer(const char* ip)
     inet_pton(AF_INET, ip, &addr.sin_addr);
 
     if (connect(g_sock, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
-        printf("서버 접속 실패 (%d)\n", WSAGetLastError());
+        printf("Failed to connect to server (%d)\n", WSAGetLastError());
         closesocket(g_sock); g_sock = INVALID_SOCKET;
         WSACleanup();
         return false;
     }
-    printf("서버 접속 성공: %s:%d\n", ip, SERVER_PORT);
+    printf("Connected to server: %s:%d\n", ip, SERVER_PORT);
 
+    g_hLoginEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
     g_hRecvThread = CreateThread(NULL, 0, ClientRecvThread, NULL, 0, NULL);
     return true;
 }
@@ -40,7 +44,7 @@ bool RecvPacket(char* buf)
 
     PacketHeader* header = (PacketHeader*)buf;
     if (header->size < sizeof(PacketHeader) || header->size > RECV_BUF_SIZE) {
-        printf("잘못된 패킷 크기: %d\n", header->size);
+        printf("Invalid packet size: %d\n", header->size);
         return false;
     }
 
@@ -59,7 +63,7 @@ DWORD WINAPI ClientRecvThread(LPVOID arg)
 
     while (true) {
         if (!RecvPacket(buf)) {
-            printf("서버와 연결이 끊어졌습니다.\n");
+            printf("Disconnected from server\n");
             break;
         }
         ProcessServerPacket(buf);
@@ -67,9 +71,39 @@ DWORD WINAPI ClientRecvThread(LPVOID arg)
     return 0;
 }
 
-// 임시: 11/10에 type별 처리로 교체
 void ProcessServerPacket(char* buf)
 {
     PacketHeader* header = (PacketHeader*)buf;
-    printf("[RECV] type=%d size=%d\n", header->type, header->size);
+
+    switch (header->type) {
+    case SC_LOGIN_OK: {
+        SC_LOGIN_OK_PACKET* p = (SC_LOGIN_OK_PACKET*)buf;
+        g_myId = p->id;
+        printf("login ok: my id = %d\n", g_myId);
+        SetEvent(g_hLoginEvent);
+        break;
+    }
+    default:
+        printf("[RECV] type=%d size=%d\n", header->type, header->size);
+        break;
+    }
+}
+
+void SendLogin(const char* name)
+{
+    CS_LOGIN_PACKET p;
+    memset(&p, 0, sizeof(p));
+    p.header.size = sizeof(p);
+    p.header.type = CS_LOGIN;
+    strncpy_s(p.name, NAME_LEN, name, _TRUNCATE);
+    send(g_sock, (char*)&p, sizeof(p), 0);
+}
+
+void SendReady(bool isReady)
+{
+    CS_READY_PACKET p;
+    p.header.size = sizeof(p);
+    p.header.type = CS_READY;
+    p.isReady = isReady;
+    send(g_sock, (char*)&p, sizeof(p), 0);
 }

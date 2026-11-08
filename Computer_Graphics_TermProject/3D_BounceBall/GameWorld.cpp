@@ -321,11 +321,25 @@ void GameWorld::reset(bool inputX)
 
 void GameWorld::update(float deltaTime)
 {
-	// 타이틀 화면에서는 업데이트 안 함
-	if (gameState_ != GameState::PLAYING) return;
-	if (!gameStarted_) return;
+	// 카운트다운: 시간이 다 되면 게임 시작
+	if (gameState_ == GameState::COUNTDOWN) {
+		countdownTime_ -= deltaTime;
+		if (countdownTime_ <= 0.0f) {
+			startGame();
+		}
+		return;
+	}
 
-	if (activateGravity_) player_.update(deltaTime);
+	// 타이틀 화면에서는 업데이트 안 함
+	if (gameState_ != GameState::PLAYING) {
+		return;
+	}
+	if (!gameStarted_) {
+		return;
+	}
+	if (activateGravity_) {
+		player_.update(deltaTime);
+	}
 
 	// 별 회전 애니메이션
 	for (auto star : stars_) {

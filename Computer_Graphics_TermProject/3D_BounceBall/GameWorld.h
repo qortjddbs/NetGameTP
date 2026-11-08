@@ -7,6 +7,8 @@
 
 enum class GameState {
 	TITLE,
+	LOBBY,
+	COUNTDOWN,
 	PLAYING,
 	ENDING
 };
@@ -101,4 +103,15 @@ private:
 	void drawEndingScreen();
 
 	TrajectoryPredictor trajectoryPredictor_;
+
+public:
+	void  enterLobby() { gameState_ = GameState::LOBBY; isReady_ = false; }
+	bool  toggleReady() { isReady_ = !isReady_; return isReady_; }
+	bool  isReady() const { return isReady_; }
+	void  startCountdown(float sec) { gameState_ = GameState::COUNTDOWN; countdownTime_ = sec; }
+	float getCountdownTime() const { return countdownTime_; }
+
+private:
+	bool  isReady_ = false;
+	float countdownTime_ = 0.0f;
 };
