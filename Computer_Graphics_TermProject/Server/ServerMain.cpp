@@ -190,7 +190,6 @@ void OnMove(int id, CS_MOVE_PACKET* packet)
 	LeaveCriticalSection(&g_csPlayers);
 }
 
-
 // 패킷 type별 분기
 void ProcessPacket(int id, char* buf)
 {

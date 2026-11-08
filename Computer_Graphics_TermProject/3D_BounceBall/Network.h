@@ -16,3 +16,4 @@ DWORD WINAPI ClientRecvThread(LPVOID arg);
 bool RecvPacket(char* buf);
 void ProcessServerPacket(char* buf);
 void SendLogin(const char* name);
+void SendReady(bool isReady);

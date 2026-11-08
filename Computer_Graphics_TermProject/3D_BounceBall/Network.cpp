@@ -98,3 +98,12 @@ void SendLogin(const char* name)
     strncpy_s(p.name, NAME_LEN, name, _TRUNCATE);
     send(g_sock, (char*)&p, sizeof(p), 0);
 }
+
+void SendReady(bool isReady)
+{
+    CS_READY_PACKET p;
+    p.header.size = sizeof(p);
+    p.header.type = CS_READY;
+    p.isReady = isReady;
+    send(g_sock, (char*)&p, sizeof(p), 0);
+}

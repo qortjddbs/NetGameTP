@@ -1,3 +1,4 @@
+#include "Network.h"
 #include "InputHandler.h"
 #include "GameWorld.h"
 #include <iostream>
@@ -49,9 +50,32 @@ void InputHandler::handleKeyboard(unsigned char key, int x, int y)
 
 	GameState state = gameWorld_->getGameState();
 
-	// 타이틀 화면: 아무 키나 누르면 게임 시작
-	if (state == GameState::TITLE && key == ' ') {
-		gameWorld_->startGame();
+	// 타이틀 / 로비: 아직 맵에 들어가기 전
+	if (state == GameState::TITLE || state == GameState::LOBBY) {
+		if (key == ' ') { // 혼자 테스트 용: 스페이스바 누르면 반드시 그냥 시작, 나중에 삭제
+			gameWorld_->startGame();
+			return;
+		}
+		if (key == '\r') {			// Enter
+			if (state == GameState::TITLE) gameWorld_->enterLobby();
+			bool ready = gameWorld_->toggleReady();
+			SendReady(ready);
+			std::cout << "Ready: " << (ready ? "ON" : "OFF") << std::endl;
+		}
+		//=======================================
+		if (key == 'g' || key == 'G') {
+			gameWorld_->startCountdown(3.0f); // SC_GAME_START 연결 후 삭제, 타이머 테스트용
+		}
+		//=======================================
+		if (key == 'q' || key == 'Q') exit(0);
+		return;
+	}
+
+	// 카운트다운: 입력 무시
+	if (state == GameState::COUNTDOWN) {
+		if (key == 'q' || key == 'Q') {
+			exit(0);
+		}
 		return;
 	}
 

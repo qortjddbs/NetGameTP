@@ -102,20 +102,26 @@ char* filetobuf(const char* file)
 void main(int argc, char** argv)
 {
 	char ip[32], name[NAME_LEN];
-	printf("Server IP: ");  scanf_s("%31s", ip, (unsigned)sizeof(ip));
-	printf("Nickname: ");   scanf_s("%15s", name, (unsigned)sizeof(name));
+	printf("Server IP: ");
+	scanf_s("%31s", ip, (unsigned)sizeof(ip));
 
-	if (!ConnectServer(ip)) {
-		return;
-	}
-	SendLogin(name);
+	if (strcmp(ip, "0") != 0) {                       // 온라인 모드, 0을 입력하면 오프라인 모드(서버없이 실행할 수 있음)
+		printf("Nickname: ");
+		scanf_s("%15s", name, (unsigned)sizeof(name));
 
-	// 서버 응답을 최대 3초 기다림
-	if (WaitForSingleObject(g_hLoginEvent, 3000) != WAIT_OBJECT_0) {
-		printf("로그인 시간 초과\n");
-		return;
+		if (!ConnectServer(ip)) {
+			return;
+		}
+		SendLogin(name);
+
+		// 서버 응답을 최대 3초 기다림
+		if (WaitForSingleObject(g_hLoginEvent, 3000) != WAIT_OBJECT_0) {
+			printf("login timeout\n");
+			return;
+		}
+		printf("login success (id=%d)\n", g_myId);
 	}
-	printf("로그인 성공 (id=%d)\n", g_myId);
+
 
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
