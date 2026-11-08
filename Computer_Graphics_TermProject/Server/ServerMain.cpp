@@ -1,10 +1,10 @@
 ﻿#include "Common.h"
 #include "Protocol.h"
 #include "ServerData.h"
+#include <cmath>
 
 Player g_players[MAX_PLAYER];
 CRITICAL_SECTION g_csPlayers;
-
 CRITICAL_SECTION g_csSend[MAX_PLAYER]; // 같은 플레이어에게 보내는 패킷이 섞이지 않도록 보호
 
 // 한 명에게 전송
@@ -56,7 +56,7 @@ void SendPacket(int id, void* packet, int size)
 // 접속 중인 모든 플레이어에게 전송
 void SendPacketToAll(void* packet, int size)
 {
-	// 접속 여부는 SendPacket 안에서 확인.
+	// 접속 여부는 SendPacket 안에서 확인
 	for (int id = 0; id < MAX_PLAYER; ++id) {
 		SendPacket(id, packet, size);
 	}
@@ -128,6 +128,27 @@ bool RecvPacket(SOCKET sock, char* buf)
 	}
 
 	return true;
+}
+
+// 클라이언트가 보낸 위치를 서버에 저장
+void OnMove(int id, CS_MOVE_PACKET* packet)
+{
+	// 잘못된 id나 패킷은 리턴
+	if (id < 0 || id >= MAX_PLAYER || packet == nullptr) return;
+	if (packet->header.type != CS_MOVE || packet->header.size < sizeof(CS_MOVE_PACKET)) return;
+
+	EnterCriticalSection(&g_csPlayers);
+
+	// 공유 데이터 임계영역으로 보호 및 접속 중인 플레이어만 위치 갱신
+	if (g_players[id].m_connect) {
+		g_players[id].m_x = packet->x;
+		g_players[id].m_y = packet->y;
+		g_players[id].m_z = packet->z;
+	}
+
+	LeaveCriticalSection(&g_csPlayers);
+
+	SendPacketToAll(packet, sizeof(CS_MOVE_PACKET));
 }
 
 // 클라이언트 id할당 후 리턴. 빈자리가 없으면 -1
