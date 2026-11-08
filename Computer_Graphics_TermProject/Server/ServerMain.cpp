@@ -130,6 +130,74 @@ bool RecvPacket(SOCKET sock, char* buf)
 	return true;
 }
 
+// 로그인 처리: 닉네임 저장 → SC_LOGIN_OK(요청자) → 기존 접속자 정보(요청자) → 새 플레이어 정보(전원)
+void OnLogin(int id, CS_LOGIN_PACKET* p)
+{
+	// 1) 닉네임 저장
+	EnterCriticalSection(&g_csPlayers);
+	strncpy_s(g_players[id].m_name, NAME_LEN, p->name, _TRUNCATE);
+	LeaveCriticalSection(&g_csPlayers);
+	printf("[%d] 로그인: %s\n", id, p->name);
+
+	// 2) 요청자에게 id 알려주기
+	SC_LOGIN_OK_PACKET ok;
+	ok.header.size = sizeof(ok);
+	ok.header.type = SC_LOGIN_OK;
+	ok.id = (char)id;
+	SendPacket(id, &ok, sizeof(ok));
+
+	// 3) 이미 접속해 있던 사람들 정보를 새 플레이어에게 (락 안에서 복사만)
+	SC_PLAYER_INFO_PACKET others[MAX_PLAYER];
+	int count = 0;
+	EnterCriticalSection(&g_csPlayers);
+	for (int i = 0; i < MAX_PLAYER; ++i) {
+		if (i == id || !g_players[i].m_connect) continue;
+		others[count].header.size = sizeof(SC_PLAYER_INFO_PACKET);
+		others[count].header.type = SC_PLAYER_INFO;
+		others[count].id = (char)i;
+		strncpy_s(others[count].name, NAME_LEN, g_players[i].m_name, _TRUNCATE);
+		++count;
+	}
+	LeaveCriticalSection(&g_csPlayers);
+	for (int i = 0; i < count; ++i)
+		SendPacket(id, &others[i], sizeof(others[i]));   // 락 밖에서 전송
+
+	// 4) 새 플레이어 정보를 전원에게
+	SC_PLAYER_INFO_PACKET info;
+	info.header.size = sizeof(info);
+	info.header.type = SC_PLAYER_INFO;
+	info.id = (char)id;
+	strncpy_s(info.name, NAME_LEN, p->name, _TRUNCATE);
+	SendPacketToAll(&info, sizeof(info));
+}
+
+// 패킷 type별 분기
+void ProcessPacket(int id, char* buf)
+{
+	PacketHeader* header = (PacketHeader*)buf;
+
+	switch (header->type) {
+	case CS_LOGIN:
+		OnLogin(id, (CS_LOGIN_PACKET*)buf);
+		break;
+	case CS_READY:
+		//OnReady(id, (CS_READY_PACKET*)buf);
+		break;
+	case CS_MOVE:
+		//OnMove(id, (CS_MOVE_PACKET*)buf);
+		break;
+	case CS_STAR_GET:
+		//OnStarGet(id, (CS_STAR_GET_PACKET*)buf);
+		break;
+	case CS_ITEM_GET:
+		//OnItemGet(id, (CS_ITEM_GET_PACKET*)buf);
+		break;
+	default:
+		printf("[%d] 알 수 없는 패킷 type=%d\n", id, header->type);
+		break;
+	}
+}
+
 // 클라이언트 id할당 후 리턴. 빈자리가 없으면 -1
 int AssignPlayerId(SOCKET sock)
 {
@@ -166,6 +234,7 @@ DWORD WINAPI ProcessClient(LPVOID arg)
 		if (!RecvPacket(sock, buf)) break;		// 끊기거나 오류면 종료
 		PacketHeader* header = (PacketHeader*)buf;
 		printf("[Player %d] 패킷 수신: type=%d, size=%d\n", id, header->type, header->size);
+		ProcessPacket(id, buf);
 	}
 
 	// 임시 정리 - 11/11에 Disconnect(id)로 확장 예정
