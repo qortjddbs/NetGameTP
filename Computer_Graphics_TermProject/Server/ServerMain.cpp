@@ -147,8 +147,6 @@ void OnMove(int id, CS_MOVE_PACKET* packet)
 	}
 
 	LeaveCriticalSection(&g_csPlayers);
-
-	SendPacketToAll(packet, sizeof(CS_MOVE_PACKET));
 }
 
 // 클라이언트 id할당 후 리턴. 빈자리가 없으면 -1
