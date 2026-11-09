@@ -187,6 +187,9 @@ void OnMove(int id, CS_MOVE_PACKET* packet)
 		g_players[id].m_z = packet->z;
 	}
 
+	// 좌표 출력
+	printf("[player %d], x=%.2f, y=%.2f, z=%.2f\n", id, packet->x, packet->y, packet->z);
+
 	LeaveCriticalSection(&g_csPlayers);
 }
 

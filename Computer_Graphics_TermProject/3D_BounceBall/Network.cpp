@@ -1,6 +1,11 @@
 #include "Network.h"
 #include "Protocol.h"
+#include "GameWorld.h"
 #include <stdio.h>
+
+// 게임이 시작될 때 이 포인터에 게임 객체를 연결
+// Network.cpp에서도 같은 객체를 사용해야 내 캐릭터의 현재 위치를 읽을 수 있음
+extern GameWorld* gameWorld;
 
 SOCKET g_sock = INVALID_SOCKET;
 HANDLE g_hRecvThread = NULL;
@@ -106,4 +111,51 @@ void SendReady(bool isReady)
     p.header.type = CS_READY;
     p.isReady = isReady;
     send(g_sock, (char*)&p, sizeof(p), 0);
+}
+
+// 좌표 읽기 -> 패킷 작성 -> 서버에 전송 -> 다음 호출 예약
+void SendMove(int value)
+{
+    // 게임 객체 존재 서버에 접속 중 플레이 중일 때만 위치 전송
+    if (gameWorld != nullptr &&
+        g_sock != INVALID_SOCKET &&
+        gameWorld->getGameState() == GameState::PLAYING)
+    {
+
+        const auto position = gameWorld->getPlayer()->getPosition();
+       
+        CS_MOVE_PACKET packet{};
+        packet.header.size = static_cast<unsigned char>(sizeof(packet));
+        packet.header.type = CS_MOVE;
+        packet.x = position.x;
+        packet.y = position.y;
+        packet.z = position.z;
+
+        const char* data = reinterpret_cast<const char*>(&packet);
+        const int packetSize = static_cast<int>(sizeof(packet));
+        int totalSent = 0;
+
+        
+        while (totalSent < packetSize) {
+            int sent = send(
+                g_sock,
+                data + totalSent,
+                packetSize - totalSent,
+                0
+            );
+
+            if (sent == SOCKET_ERROR || sent == 0) {
+                printf("[SendMove] 위치 전송 실패\n");
+
+                // 불완전한 패킷 전송 시 통신 중단
+                shutdown(g_sock, SD_BOTH);
+                return;
+            }
+
+            totalSent += sent;
+        }
+    }
+
+    // 다음 호출 예약
+    glutTimerFunc(33, SendMove, 0);
 }
