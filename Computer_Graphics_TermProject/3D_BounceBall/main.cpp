@@ -198,6 +198,7 @@ void main(int argc, char** argv)
 		}
 		});
 
+	glutTimerFunc(33, SendMove, 0);
 	glutMainLoop();
 }
 
