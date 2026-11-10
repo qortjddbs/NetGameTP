@@ -198,7 +198,7 @@ void OnReady(int id, CS_READY_PACKET* packet)
 {
 	// 잘못된 id나 패킷은 리턴
 	if (id < 0 || id >= MAX_PLAYER || packet == nullptr) return;
-	if (packet->header.type != CS_READY || packet->header.size != sizeof(CS_READY_PACKET)) return;
+	if (packet->type != CS_READY || packet->size != sizeof(CS_READY_PACKET)) return;
 
 	int readyPlayers = 0;
 
@@ -219,8 +219,8 @@ void OnReady(int id, CS_READY_PACKET* packet)
 	printf("[player %d], Ready - %d (%d/%d)\n", id, packet->isReady, readyPlayers, MAX_PLAYER);
 
 	SC_READY_PACKET rp;
-	rp.header.size = sizeof(rp);
-	rp.header.type = SC_READY;
+	rp.size = sizeof(rp);
+	rp.type = SC_READY;
 	rp.id = (char)id;
 	rp.isReady = packet->isReady;
 	SendPacketToAll(&rp, sizeof(rp));
