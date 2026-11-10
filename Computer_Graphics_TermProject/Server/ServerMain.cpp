@@ -226,7 +226,7 @@ void OnReady(int id, CS_READY_PACKET* packet)
 	SendPacketToAll(&rp, sizeof(rp));
 
 	if (readyPlayers == MAX_PLAYER) {
-		printf("3명 모두 준비 -> 시작 신호 on\n");   // ← 변경: if 안으로 옮기고 \n 추가
+		printf("3명 모두 준비 -> 시작 신호 on\n");
 		SetEvent(g_hStartEvent);
 	}
 }
