@@ -20,7 +20,7 @@ void SendPacket(int id, void* packet, int size)
 	const PacketHeader* header = static_cast<const PacketHeader*>(packet);
 	if (header->size != size) return;
 
-	// 패킷 하나를 다 보낼 때까지 다른 스레드의 전송을 막음 임계영역
+	// 패킷 하나를 다 보낼 때까지 다른 스레드의 전송을 막음 (임계영역)
 	EnterCriticalSection(&g_csSend[id]);
 
 	// 접속 정보 복사
@@ -278,6 +278,31 @@ int AssignPlayerId(SOCKET sock)
 	return id;
 }
 
+void Disconnect(int id) {
+	SOCKET sock;
+
+	// 두 개의 락을 같이 잡을 때 -> 항상 g_csSend 먼저 잡기
+	// SendPacket이 보내는 도중에 소켓이 닫히지 않게 g_csSend까지 잡음
+	EnterCriticalSection(&g_csSend[id]);
+	EnterCriticalSection(&g_csPlayers);
+	sock = g_players[id].m_sock;
+	g_players[id].m_connect = false;
+	g_players[id].m_sock = INVALID_SOCKET;
+	LeaveCriticalSection(&g_csPlayers);
+	closesocket(sock);
+	LeaveCriticalSection(&g_csSend[id]);
+
+	SC_LEAVE_PACKET lp;
+	lp.type = SC_LEAVE;
+	lp.size = sizeof(lp);
+	lp.id = (char)id;
+	SendPacketToAll(&lp, sizeof(lp));
+
+	printf("[%d] 종료\n", id);
+
+	// CheckGameEnd(): 남은 사람이 1명뿐이면 게임 종료 (11월 18일 구현 예정)
+}
+
 // 클라이언트 한 명 전용 쓰레드
 DWORD WINAPI ProcessClient(LPVOID arg)
 {
@@ -298,12 +323,7 @@ DWORD WINAPI ProcessClient(LPVOID arg)
 		ProcessPacket(id, buf);
 	}
 
-	// 임시 정리 - 11/11에 Disconnect(id)로 확장 예정
-	EnterCriticalSection(&g_csPlayers);
-	g_players[id].m_connect = false;
-	LeaveCriticalSection(&g_csPlayers);
-
-	closesocket(sock);
+	Disconnect(id);
 	printf("[쓰레드] Player %d 종료\n", id);
 	return 0;
 }
