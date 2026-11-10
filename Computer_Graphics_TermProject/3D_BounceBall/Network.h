@@ -1,4 +1,5 @@
 #pragma once
+#include "Protocol.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32")
@@ -10,6 +11,10 @@ extern HANDLE g_hRecvThread;
 
 extern int    g_myId;
 extern HANDLE g_hLoginEvent;
+
+extern char g_playerName[MAX_PLAYER][NAME_LEN];
+extern bool g_playerReady[MAX_PLAYER];
+extern bool g_playerConnected[MAX_PLAYER];
 
 bool ConnectServer(const char* ip);
 DWORD WINAPI ClientRecvThread(LPVOID arg);
