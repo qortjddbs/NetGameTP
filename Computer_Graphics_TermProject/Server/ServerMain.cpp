@@ -141,8 +141,8 @@ void OnLogin(int id, CS_LOGIN_PACKET* p)
 
 	// 2) 요청자에게 id 알려주기
 	SC_LOGIN_OK_PACKET ok;
-	ok.header.size = sizeof(ok);
-	ok.header.type = SC_LOGIN_OK;
+	ok.size = sizeof(ok);
+	ok.type = SC_LOGIN_OK;
 	ok.id = (char)id;
 	SendPacket(id, &ok, sizeof(ok));
 
@@ -152,8 +152,8 @@ void OnLogin(int id, CS_LOGIN_PACKET* p)
 	EnterCriticalSection(&g_csPlayers);
 	for (int i = 0; i < MAX_PLAYER; ++i) {
 		if (i == id || !g_players[i].m_connect) continue;
-		others[count].header.size = sizeof(SC_PLAYER_INFO_PACKET);
-		others[count].header.type = SC_PLAYER_INFO;
+		others[count].size = sizeof(SC_PLAYER_INFO_PACKET);
+		others[count].type = SC_PLAYER_INFO;
 		others[count].id = (char)i;
 		strncpy_s(others[count].name, NAME_LEN, g_players[i].m_name, _TRUNCATE);
 		++count;
@@ -164,8 +164,8 @@ void OnLogin(int id, CS_LOGIN_PACKET* p)
 
 	// 4) 새 플레이어 정보를 전원에게
 	SC_PLAYER_INFO_PACKET info;
-	info.header.size = sizeof(info);
-	info.header.type = SC_PLAYER_INFO;
+	info.size = sizeof(info);
+	info.type = SC_PLAYER_INFO;
 	info.id = (char)id;
 	strncpy_s(info.name, NAME_LEN, p->name, _TRUNCATE);
 	SendPacketToAll(&info, sizeof(info));
@@ -176,7 +176,7 @@ void OnMove(int id, CS_MOVE_PACKET* packet)
 {
 	// 잘못된 id나 패킷은 리턴
 	if (id < 0 || id >= MAX_PLAYER || packet == nullptr) return;
-	if (packet->header.type != CS_MOVE || packet->header.size < sizeof(CS_MOVE_PACKET)) return;
+	if (packet->type != CS_MOVE || packet->size < sizeof(CS_MOVE_PACKET)) return;
 
 	EnterCriticalSection(&g_csPlayers);
 
