@@ -6,6 +6,7 @@
 Player g_players[MAX_PLAYER];
 CRITICAL_SECTION g_csPlayers;
 CRITICAL_SECTION g_csSend[MAX_PLAYER]; // 같은 플레이어에게 보내는 패킷이 섞이지 않도록 보호
+HANDLE g_hStartEvent;
 
 // 한 명에게 전송
 void SendPacket(int id, void* packet, int size)
@@ -193,6 +194,43 @@ void OnMove(int id, CS_MOVE_PACKET* packet)
 	LeaveCriticalSection(&g_csPlayers);
 }
 
+void OnReady(int id, CS_READY_PACKET* packet)
+{
+	// 잘못된 id나 패킷은 리턴
+	if (id < 0 || id >= MAX_PLAYER || packet == nullptr) return;
+	if (packet->header.type != CS_READY || packet->header.size != sizeof(CS_READY_PACKET)) return;
+
+	int readyPlayers = 0;
+
+	EnterCriticalSection(&g_csPlayers);
+
+	// 공유 데이터 임계영역으로 보호 및 접속 중인 플레이어만 준비 상태 갱신
+	if (g_players[id].m_connect) {
+		g_players[id].m_ready = packet->isReady;
+	}
+
+	for (int i = 0; i < MAX_PLAYER; ++i) {
+		if (g_players[i].m_connect && g_players[i].m_ready) readyPlayers++;
+	}
+
+	LeaveCriticalSection(&g_csPlayers);
+
+	// 준비 상태 출력 (준비 인원 n/3)
+	printf("[player %d], Ready - %d (%d/%d)\n", id, packet->isReady, readyPlayers, MAX_PLAYER);
+
+	SC_READY_PACKET rp;
+	rp.header.size = sizeof(rp);
+	rp.header.type = SC_READY;
+	rp.id = (char)id;
+	rp.isReady = packet->isReady;
+	SendPacketToAll(&rp, sizeof(rp));
+
+	if (readyPlayers == MAX_PLAYER) {
+		printf("3명 모두 준비 -> 시작 신호 on\n");   // ← 변경: if 안으로 옮기고 \n 추가
+		SetEvent(g_hStartEvent);
+	}
+}
+
 // 패킷 type별 분기
 void ProcessPacket(int id, char* buf)
 {
@@ -203,7 +241,7 @@ void ProcessPacket(int id, char* buf)
 		OnLogin(id, (CS_LOGIN_PACKET*)buf);
 		break;
 	case CS_READY:
-		//OnReady(id, (CS_READY_PACKET*)buf);
+		OnReady(id, (CS_READY_PACKET*)buf);
 		break;
 	case CS_MOVE:
 		OnMove(id, (CS_MOVE_PACKET*)buf);
@@ -278,7 +316,13 @@ int main(int argc, char* argv[])
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 		return 1;
 
+	// 플레이어 전체 임계영역 초기화
 	InitializeCriticalSection(&g_csPlayers);
+
+	// 이벤트 초기화 (수동리셋, 비신호)
+	g_hStartEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (NULL == g_hStartEvent)
+		return 1;
 
 	// 소켓 생성
 	SOCKET listen_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -297,7 +341,7 @@ int main(int argc, char* argv[])
 	retval = listen(listen_sock, SOMAXCONN);
 	if (retval == SOCKET_ERROR) err_quit("listen()");
 
-	// 임계영역 초기화
+	// 플레이어 각각의 send 임계영역 초기화
 	for (int id = 0; id < MAX_PLAYER; ++id) {
 		InitializeCriticalSection(&g_csSend[id]);
 	}
@@ -350,6 +394,7 @@ int main(int argc, char* argv[])
 	}
 	closesocket(listen_sock);
 	WSACleanup();
+	CloseHandle(g_hStartEvent);
 	DeleteCriticalSection(&g_csPlayers);
 	return 0;
 }
