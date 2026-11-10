@@ -13,6 +13,10 @@ HANDLE g_hRecvThread = NULL;
 int    g_myId = -1;
 HANDLE g_hLoginEvent = NULL;
 
+char g_playerName[MAX_PLAYER][NAME_LEN] = {};
+bool g_playerReady[MAX_PLAYER] = { false, };
+bool g_playerConnected[MAX_PLAYER] = { false, };
+
 bool ConnectServer(const char* ip)
 {
     WSADATA wsa;
@@ -86,6 +90,22 @@ void ProcessServerPacket(char* buf)
         g_myId = p->id;
         printf("login ok: my id = %d\n", g_myId);
         SetEvent(g_hLoginEvent);
+        break;
+    }
+    case SC_PLAYER_INFO: {
+        SC_PLAYER_INFO_PACKET* p = (SC_PLAYER_INFO_PACKET*)buf;
+        if (p->id < 0 || p->id >= MAX_PLAYER) break;
+        strncpy_s(g_playerName[(int)p->id], NAME_LEN, p->name, _TRUNCATE);
+        g_playerConnected[(int)p->id] = true;
+        g_playerReady[(int)p->id] = false;          // 새로 들어온 사람은 준비 전
+        printf("[RECV] player info: id=%d name=%s\n", p->id, p->name);
+        break;
+    }
+    case SC_READY: {
+        SC_READY_PACKET* p = (SC_READY_PACKET*)buf;
+        if (p->id < 0 || p->id >= MAX_PLAYER) break;
+        g_playerReady[(int)p->id] = p->isReady;
+        printf("[RECV] ready: id=%d %s\n", p->id, p->isReady ? "ON" : "OFF");
         break;
     }
     default:
