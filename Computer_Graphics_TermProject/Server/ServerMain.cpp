@@ -194,6 +194,7 @@ void OnMove(int id, CS_MOVE_PACKET* packet)
 	LeaveCriticalSection(&g_csPlayers);
 }
 
+// 플레이어 준비 처리
 void OnReady(int id, CS_READY_PACKET* packet)
 {
 	// 잘못된 id나 패킷은 리턴
@@ -216,7 +217,7 @@ void OnReady(int id, CS_READY_PACKET* packet)
 	LeaveCriticalSection(&g_csPlayers);
 
 	// 준비 상태 출력 (준비 인원 n/3)
-	printf("[player %d], Ready - %d (%d/%d)\n", id, packet->isReady, readyPlayers, MAX_PLAYER);
+	printf("[player %d], Ready - %s (%d/%d)\n", id, packet->isReady ? "ON" : "OFF", readyPlayers, MAX_PLAYER);
 
 	SC_READY_PACKET rp;
 	rp.size = sizeof(rp);
@@ -307,6 +308,31 @@ DWORD WINAPI ProcessClient(LPVOID arg)
 	return 0;
 }
 
+// 게임 로직 쓰레드
+DWORD WINAPI LogicThread(LPVOID arg) {
+	// 준비 완료 대기
+	DWORD retval = WaitForSingleObject(g_hStartEvent, INFINITE);
+	if (retval != WAIT_OBJECT_0) {
+		printf("게임 로직 쓰레드 - 준비 완료 대기에서 문제 발생\n");
+		return 1;
+	}
+
+	SC_GAME_START_PACKET gsp;
+	gsp.size = sizeof(gsp);
+	gsp.type = SC_GAME_START;
+	gsp.countdown = 3;
+	SendPacketToAll(&gsp, sizeof(gsp));
+
+	// 게임 로직 쓰레드도 3초 기다리기
+	Sleep(gsp.countdown * 1000);
+
+	printf("게임 시작!!\n");
+
+	// 나중에 채울 예정
+
+	return 0;
+}
+
 int main(int argc, char* argv[])
 {
 	int retval;
@@ -346,6 +372,16 @@ int main(int argc, char* argv[])
 		InitializeCriticalSection(&g_csSend[id]);
 	}
 
+	// LogicThread 생성 및 실행
+	HANDLE hThread = CreateThread(NULL, 0, LogicThread, NULL, 0, NULL);
+	if (NULL == hThread) {
+		printf("LogicThread 생성 실패\n");
+		return 1;
+	}
+	else {
+		CloseHandle(hThread);
+	}
+
 	printf("[서버] %d번 포트에서 대기 중...\n", SERVER_PORT);
 
 	// 데이터 통신에 사용할 변수
@@ -375,7 +411,7 @@ int main(int argc, char* argv[])
 			continue;
 		}
 
-		HANDLE hThread = CreateThread(NULL, 0, ProcessClient, (LPVOID)(INT_PTR)id, 0, NULL);
+		hThread = CreateThread(NULL, 0, ProcessClient, (LPVOID)(INT_PTR)id, 0, NULL);
 		if (NULL == hThread) {
 			EnterCriticalSection(&g_csPlayers);
 			g_players[id].m_connect = false;
