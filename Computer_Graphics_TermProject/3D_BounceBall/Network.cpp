@@ -66,19 +66,19 @@ bool RecvPacket(char* buf)
     return true;
 }
 
-DWORD WINAPI ClientRecvThread(LPVOID arg)
-{
-    char buf[RECV_BUF_SIZE];
+    DWORD WINAPI ClientRecvThread(LPVOID arg)
+    {
+        char buf[RECV_BUF_SIZE];
 
-    while (true) {
-        if (!RecvPacket(buf)) {
-            printf("Disconnected from server\n");
-            break;
+        while (true) {
+            if (!RecvPacket(buf)) {
+                printf("Disconnected from server\n");
+                break;
+            }
+            ProcessServerPacket(buf);
         }
-        ProcessServerPacket(buf);
+        return 0;
     }
-    return 0;
-}
 
 void ProcessServerPacket(char* buf)
 {
@@ -118,8 +118,8 @@ void SendLogin(const char* name)
 {
     CS_LOGIN_PACKET p;
     memset(&p, 0, sizeof(p));
-    p.header.size = sizeof(p);
-    p.header.type = CS_LOGIN;
+    p.size = sizeof(p);
+    p.type = CS_LOGIN;
     strncpy_s(p.name, NAME_LEN, name, _TRUNCATE);
     send(g_sock, (char*)&p, sizeof(p), 0);
 }
@@ -127,8 +127,8 @@ void SendLogin(const char* name)
 void SendReady(bool isReady)
 {
     CS_READY_PACKET p;
-    p.header.size = sizeof(p);
-    p.header.type = CS_READY;
+    p.size = sizeof(p);
+    p.type = CS_READY;
     p.isReady = isReady;
     send(g_sock, (char*)&p, sizeof(p), 0);
 }
@@ -145,8 +145,8 @@ void SendMove(int value)
         const auto position = gameWorld->getPlayer()->getPosition();
        
         CS_MOVE_PACKET packet{};
-        packet.header.size = static_cast<unsigned char>(sizeof(packet));
-        packet.header.type = CS_MOVE;
+        packet.size = static_cast<unsigned char>(sizeof(packet));
+        packet.type = CS_MOVE;
         packet.x = position.x;
         packet.y = position.y;
         packet.z = position.z;
