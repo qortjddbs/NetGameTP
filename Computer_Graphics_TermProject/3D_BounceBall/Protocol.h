@@ -33,44 +33,35 @@ struct PacketHeader {
 };
 
 // ===== Client -> Server =====
-struct CS_LOGIN_PACKET {
-    PacketHeader header;
+struct CS_LOGIN_PACKET : PacketHeader {
     char name[NAME_LEN];
 };
-struct CS_READY_PACKET {
-    PacketHeader header;
+struct CS_READY_PACKET : PacketHeader {
     bool isReady;
 };
-struct CS_MOVE_PACKET {
-    PacketHeader header;
+struct CS_MOVE_PACKET : PacketHeader {
     float x, y, z;
 };
-struct CS_STAR_GET_PACKET {
-    PacketHeader header;
+struct CS_STAR_GET_PACKET : PacketHeader {
     char starId;
 };
-struct CS_ITEM_GET_PACKET {
-    PacketHeader header;
+struct CS_ITEM_GET_PACKET : PacketHeader {
     char itemId;
 };
 
 // ===== Server -> Client =====
-struct SC_LOGIN_OK_PACKET {
-    PacketHeader header;
+struct SC_LOGIN_OK_PACKET : PacketHeader {
     char id;
 };
-struct SC_PLAYER_INFO_PACKET {
-    PacketHeader header;
+struct SC_PLAYER_INFO_PACKET : PacketHeader {
     char id;
     char name[NAME_LEN];
 };
-struct SC_READY_PACKET {
-    PacketHeader header;
+struct SC_READY_PACKET : PacketHeader {
     char id;
     bool isReady;
 };
-struct SC_GAME_START_PACKET {
-    PacketHeader header;
+struct SC_GAME_START_PACKET : PacketHeader {
     char countdown;
 };
 // SC_GHOST_PACKET 으로 보내는 Ghost Data
@@ -78,21 +69,18 @@ struct GhostData {
     char id;
     float x, y, z;
 };
-struct SC_GHOST_PACKET { 
-    PacketHeader header;
+struct SC_GHOST_PACKET : PacketHeader {
     char count;
     GhostData ghost[MAX_PLAYER];
 };
 
-struct SC_STAR_RESULT_PACKET { 
-    PacketHeader header; 
+struct SC_STAR_RESULT_PACKET : PacketHeader { 
     char id; 
     char starId; 
     char starCount; 
     bool success; 
 };
-struct SC_ITEM_RESULT_PACKET { 
-    PacketHeader header; 
+struct SC_ITEM_RESULT_PACKET : PacketHeader { 
     char id; 
     char itemId; 
     char itemType; 
@@ -102,13 +90,11 @@ struct RankData {
     char id;
     char starCount;
 };
-struct SC_GAME_END_PACKET {
-    PacketHeader header;
+struct SC_GAME_END_PACKET : PacketHeader {
     char count;
     RankData rank[MAX_PLAYER];
 };
-struct SC_LEAVE_PACKET {
-    PacketHeader header;
+struct SC_LEAVE_PACKET : PacketHeader {
     char id;
 };
 
