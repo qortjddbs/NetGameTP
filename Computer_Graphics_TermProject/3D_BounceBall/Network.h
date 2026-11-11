@@ -16,6 +16,8 @@ extern char g_playerName[MAX_PLAYER][NAME_LEN];
 extern bool g_playerReady[MAX_PLAYER];
 extern bool g_playerConnected[MAX_PLAYER];
 
+extern CRITICAL_SECTION g_csNet;
+
 bool ConnectServer(const char* ip);
 DWORD WINAPI ClientRecvThread(LPVOID arg);
 bool RecvPacket(char* buf);

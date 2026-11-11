@@ -17,6 +17,8 @@ char g_playerName[MAX_PLAYER][NAME_LEN] = {};
 bool g_playerReady[MAX_PLAYER] = { false, };
 bool g_playerConnected[MAX_PLAYER] = { false, };
 
+CRITICAL_SECTION g_csNet;
+
 bool ConnectServer(const char* ip)
 {
     WSADATA wsa;
@@ -44,7 +46,7 @@ bool ConnectServer(const char* ip)
     return true;
 }
 
-// 헤더(3byte) → 본문 순서로 패킷 1개를 정확히 받음
+// 헤더(3byte) -> 본문 순서로 패킷 1개를 정확히 받음
 bool RecvPacket(char* buf)
 {
     // 1) 헤더
@@ -66,19 +68,19 @@ bool RecvPacket(char* buf)
     return true;
 }
 
-    DWORD WINAPI ClientRecvThread(LPVOID arg)
-    {
-        char buf[RECV_BUF_SIZE];
+DWORD WINAPI ClientRecvThread(LPVOID arg)
+{
+   char buf[RECV_BUF_SIZE];
 
-        while (true) {
-            if (!RecvPacket(buf)) {
-                printf("Disconnected from server\n");
-                break;
-            }
-            ProcessServerPacket(buf);
+   while (true) {
+        if (!RecvPacket(buf)) {
+           printf("Disconnected from server\n");
+           break;
         }
-        return 0;
-    }
+        ProcessServerPacket(buf);
+   }
+   return 0;
+}
 
 void ProcessServerPacket(char* buf)
 {
@@ -95,16 +97,20 @@ void ProcessServerPacket(char* buf)
     case SC_PLAYER_INFO: {
         SC_PLAYER_INFO_PACKET* p = (SC_PLAYER_INFO_PACKET*)buf;
         if (p->id < 0 || p->id >= MAX_PLAYER) break;
+        EnterCriticalSection(&g_csNet);  // 추가
         strncpy_s(g_playerName[(int)p->id], NAME_LEN, p->name, _TRUNCATE);
         g_playerConnected[(int)p->id] = true;
         g_playerReady[(int)p->id] = false;          // 새로 들어온 사람은 준비 전
+        LeaveCriticalSection(&g_csNet);  // 추가
         printf("[RECV] player info: id=%d name=%s\n", p->id, p->name);
         break;
     }
     case SC_READY: {
         SC_READY_PACKET* p = (SC_READY_PACKET*)buf;
         if (p->id < 0 || p->id >= MAX_PLAYER) break;
+        EnterCriticalSection(&g_csNet);  // 추가
         g_playerReady[(int)p->id] = p->isReady;
+        LeaveCriticalSection(&g_csNet);  // 추가
         printf("[RECV] ready: id=%d %s\n", p->id, p->isReady ? "ON" : "OFF");
         break;
     }
