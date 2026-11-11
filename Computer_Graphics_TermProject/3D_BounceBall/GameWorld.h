@@ -101,7 +101,7 @@ private:
 	bool loadEndingTexture(const char* filepath);
 	void drawTitleScreen();
 	void drawEndingScreen();
-
+	void drawLobby();
 	TrajectoryPredictor trajectoryPredictor_;
 
 public:

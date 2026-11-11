@@ -1,4 +1,5 @@
-﻿#include "GameWorld.h"
+﻿#include "Network.h"
+#include "GameWorld.h"
 #include <iostream>
 #include <windows.h>
 #include <mmsystem.h>
@@ -96,6 +97,123 @@ bool GameWorld::loadEndingTexture(const char* filepath)
 	return true;
 }
 
+void GameWorld::drawLobby()
+{
+	// 공유 데이터는 잠금 안에서 복사
+	char names[MAX_PLAYER][NAME_LEN]{};
+	bool connected[MAX_PLAYER]{};
+	bool ready[MAX_PLAYER]{};
+
+	EnterCriticalSection(&g_csNet);
+
+	memcpy(names, g_playerName, sizeof(names));
+	memcpy(connected, g_playerConnected, sizeof(connected));
+	memcpy(ready, g_playerReady, sizeof(ready));
+
+	LeaveCriticalSection(&g_csNet);
+
+	// 원래 그리기 상태 저장
+	GLint oldProgram = 0;
+	GLint oldMatrixMode = 0;
+	glGetIntegerv(GL_CURRENT_PROGRAM, &oldProgram);
+	glGetIntegerv(GL_MATRIX_MODE, &oldMatrixMode);
+
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
+	glUseProgram(0);
+
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_LIGHTING);
+	glDisable(GL_TEXTURE_2D);
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	// 2D 좌표 설정
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	gluOrtho2D(0, 800, 0, 600);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+
+	// 배경
+	glColor3f(0.08f, 0.10f, 0.16f);
+	glBegin(GL_QUADS);
+	glVertex2f(0, 0);
+	glVertex2f(800, 0);
+	glVertex2f(800, 600);
+	glVertex2f(0, 600);
+	glEnd();
+
+	// 문자열 그리기
+	auto drawText = [](float x, float y, const char* text) {
+		glRasterPos2f(x, y);
+
+		for (const unsigned char* c =
+			reinterpret_cast<const unsigned char*>(text);
+			*c != '\0'; ++c) {
+			glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
+		}
+		};
+
+	glColor3f(1.0f, 1.0f, 1.0f);
+	drawText(80, 520, "MULTIPLAYER LOBBY");
+
+	int playerCount = 0;
+	for (int i = 0; i < MAX_PLAYER; ++i) {
+		if (connected[i])
+			++playerCount;
+	}
+
+	char text[128]{};
+	sprintf_s(text, sizeof(text),
+		"Players: %d / %d", playerCount, MAX_PLAYER);
+	drawText(80, 470, text);
+
+	// 각 플레이어의 닉네임과 준비 상태
+	for (int i = 0; i < MAX_PLAYER; ++i) {
+		float y = 390.0f - i * 70.0f;
+
+		if (!connected[i]) {
+			glColor3f(0.55f, 0.55f, 0.55f);
+
+			sprintf_s(text, sizeof(text),
+				"Slot %d: Waiting for player...", i + 1);
+		}
+		else {
+			if (ready[i])
+				glColor3f(0.3f, 1.0f, 0.5f);
+			else
+				glColor3f(1.0f, 0.8f, 0.3f);
+
+			sprintf_s(text, sizeof(text),
+				"%s%s  -  %s",
+				names[i],
+				i == g_myId ? " (ME)" : "",
+				ready[i] ? "READY" : "NOT READY");
+		}
+
+		drawText(80, y, text);
+	}
+
+	glColor3f(1.0f, 1.0f, 1.0f);
+	drawText(80, 130, "ENTER: Ready / Cancel");
+	drawText(80, 90, "Waiting for all 3 players to be ready.");
+
+	// 원래 그리기 상태 복원
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+
+	glPopAttrib();
+	glUseProgram(static_cast<GLuint>(oldProgram));
+	glMatrixMode(static_cast<GLenum>(oldMatrixMode));
+}
+
 void GameWorld::drawTitleScreen()
 {
 	if (titleTextureID_ == 0) {
@@ -122,7 +240,7 @@ void GameWorld::drawTitleScreen()
 	glLoadIdentity();
 
 	// ========================================
-	// 🔧 여기서 직접 조정 가능!
+	// 여기서 직접 조정 가능
 	// ========================================
 	float windowWidth = (float)glutGet(GLUT_WINDOW_WIDTH);
 	float windowHeight = (float)glutGet(GLUT_WINDOW_HEIGHT);
@@ -369,6 +487,12 @@ void GameWorld::draw()
 	// 타이틀 화면이면 타이틀만 그리기
 	if (gameState_ == GameState::TITLE) {
 		drawTitleScreen();
+		return;
+	}
+
+	// 로비 화면 그리기
+	if (gameState_ == GameState::LOBBY) {
+		drawLobby();
 		return;
 	}
 
