@@ -6,6 +6,7 @@
 Player g_players[MAX_PLAYER];
 CRITICAL_SECTION g_csPlayers;
 CRITICAL_SECTION g_csSend[MAX_PLAYER]; // 같은 플레이어에게 보내는 패킷이 섞이지 않도록 보호
+HANDLE g_hStartEvent;
 
 // 한 명에게 전송
 void SendPacket(int id, void* packet, int size)
@@ -19,7 +20,7 @@ void SendPacket(int id, void* packet, int size)
 	const PacketHeader* header = static_cast<const PacketHeader*>(packet);
 	if (header->size != size) return;
 
-	// 패킷 하나를 다 보낼 때까지 다른 스레드의 전송을 막음 임계영역
+	// 패킷 하나를 다 보낼 때까지 다른 스레드의 전송을 막음 (임계영역)
 	EnterCriticalSection(&g_csSend[id]);
 
 	// 접속 정보 복사
@@ -193,6 +194,44 @@ void OnMove(int id, CS_MOVE_PACKET* packet)
 	LeaveCriticalSection(&g_csPlayers);
 }
 
+// 플레이어 준비 처리
+void OnReady(int id, CS_READY_PACKET* packet)
+{
+	// 잘못된 id나 패킷은 리턴
+	if (id < 0 || id >= MAX_PLAYER || packet == nullptr) return;
+	if (packet->type != CS_READY || packet->size != sizeof(CS_READY_PACKET)) return;
+
+	int readyPlayers = 0;
+
+	EnterCriticalSection(&g_csPlayers);
+
+	// 공유 데이터 임계영역으로 보호 및 접속 중인 플레이어만 준비 상태 갱신
+	if (g_players[id].m_connect) {
+		g_players[id].m_ready = packet->isReady;
+	}
+
+	for (int i = 0; i < MAX_PLAYER; ++i) {
+		if (g_players[i].m_connect && g_players[i].m_ready) readyPlayers++;
+	}
+
+	LeaveCriticalSection(&g_csPlayers);
+
+	// 준비 상태 출력 (준비 인원 n/3)
+	printf("[player %d], Ready - %s (%d/%d)\n", id, packet->isReady ? "ON" : "OFF", readyPlayers, MAX_PLAYER);
+
+	SC_READY_PACKET rp;
+	rp.size = sizeof(rp);
+	rp.type = SC_READY;
+	rp.id = (char)id;
+	rp.isReady = packet->isReady;
+	SendPacketToAll(&rp, sizeof(rp));
+
+	if (readyPlayers == MAX_PLAYER) {
+		printf("3명 모두 준비 -> 시작 신호 on\n");
+		SetEvent(g_hStartEvent);
+	}
+}
+
 // 패킷 type별 분기
 void ProcessPacket(int id, char* buf)
 {
@@ -203,7 +242,7 @@ void ProcessPacket(int id, char* buf)
 		OnLogin(id, (CS_LOGIN_PACKET*)buf);
 		break;
 	case CS_READY:
-		//OnReady(id, (CS_READY_PACKET*)buf);
+		OnReady(id, (CS_READY_PACKET*)buf);
 		break;
 	case CS_MOVE:
 		OnMove(id, (CS_MOVE_PACKET*)buf);
@@ -239,6 +278,31 @@ int AssignPlayerId(SOCKET sock)
 	return id;
 }
 
+void Disconnect(int id) {
+	SOCKET sock;
+
+	// 두 개의 락을 같이 잡을 때 -> 항상 g_csSend 먼저 잡기
+	// SendPacket이 보내는 도중에 소켓이 닫히지 않게 g_csSend까지 잡음
+	EnterCriticalSection(&g_csSend[id]);
+	EnterCriticalSection(&g_csPlayers);
+	sock = g_players[id].m_sock;
+	g_players[id].m_connect = false;
+	g_players[id].m_sock = INVALID_SOCKET;
+	LeaveCriticalSection(&g_csPlayers);
+	closesocket(sock);
+	LeaveCriticalSection(&g_csSend[id]);
+
+	SC_LEAVE_PACKET lp;
+	lp.type = SC_LEAVE;
+	lp.size = sizeof(lp);
+	lp.id = (char)id;
+	SendPacketToAll(&lp, sizeof(lp));
+
+	printf("[%d] 종료\n", id);
+
+	// CheckGameEnd(): 남은 사람이 1명뿐이면 게임 종료 (11월 18일 구현 예정)
+}
+
 // 클라이언트 한 명 전용 쓰레드
 DWORD WINAPI ProcessClient(LPVOID arg)
 {
@@ -259,13 +323,33 @@ DWORD WINAPI ProcessClient(LPVOID arg)
 		ProcessPacket(id, buf);
 	}
 
-	// 임시 정리 - 11/11에 Disconnect(id)로 확장 예정
-	EnterCriticalSection(&g_csPlayers);
-	g_players[id].m_connect = false;
-	LeaveCriticalSection(&g_csPlayers);
-
-	closesocket(sock);
+	Disconnect(id);
 	printf("[쓰레드] Player %d 종료\n", id);
+	return 0;
+}
+
+// 게임 로직 쓰레드
+DWORD WINAPI LogicThread(LPVOID arg) {
+	// 준비 완료 대기
+	DWORD retval = WaitForSingleObject(g_hStartEvent, INFINITE);
+	if (retval != WAIT_OBJECT_0) {
+		printf("게임 로직 쓰레드 - 준비 완료 대기에서 문제 발생\n");
+		return 1;
+	}
+
+	SC_GAME_START_PACKET gsp;
+	gsp.size = sizeof(gsp);
+	gsp.type = SC_GAME_START;
+	gsp.countdown = 3;
+	SendPacketToAll(&gsp, sizeof(gsp));
+
+	// 게임 로직 쓰레드도 3초 기다리기
+	Sleep(gsp.countdown * 1000);
+
+	printf("게임 시작!!\n");
+
+	// 나중에 채울 예정
+
 	return 0;
 }
 
@@ -278,7 +362,13 @@ int main(int argc, char* argv[])
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 		return 1;
 
+	// 플레이어 전체 임계영역 초기화
 	InitializeCriticalSection(&g_csPlayers);
+
+	// 이벤트 초기화 (수동리셋, 비신호)
+	g_hStartEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (NULL == g_hStartEvent)
+		return 1;
 
 	// 소켓 생성
 	SOCKET listen_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -297,9 +387,19 @@ int main(int argc, char* argv[])
 	retval = listen(listen_sock, SOMAXCONN);
 	if (retval == SOCKET_ERROR) err_quit("listen()");
 
-	// 임계영역 초기화
+	// 플레이어 각각의 send 임계영역 초기화
 	for (int id = 0; id < MAX_PLAYER; ++id) {
 		InitializeCriticalSection(&g_csSend[id]);
+	}
+
+	// LogicThread 생성 및 실행
+	HANDLE hThread = CreateThread(NULL, 0, LogicThread, NULL, 0, NULL);
+	if (NULL == hThread) {
+		printf("LogicThread 생성 실패\n");
+		return 1;
+	}
+	else {
+		CloseHandle(hThread);
 	}
 
 	printf("[서버] %d번 포트에서 대기 중...\n", SERVER_PORT);
@@ -331,7 +431,7 @@ int main(int argc, char* argv[])
 			continue;
 		}
 
-		HANDLE hThread = CreateThread(NULL, 0, ProcessClient, (LPVOID)(INT_PTR)id, 0, NULL);
+		hThread = CreateThread(NULL, 0, ProcessClient, (LPVOID)(INT_PTR)id, 0, NULL);
 		if (NULL == hThread) {
 			EnterCriticalSection(&g_csPlayers);
 			g_players[id].m_connect = false;
@@ -350,6 +450,7 @@ int main(int argc, char* argv[])
 	}
 	closesocket(listen_sock);
 	WSACleanup();
+	CloseHandle(g_hStartEvent);
 	DeleteCriticalSection(&g_csPlayers);
 	return 0;
 }
