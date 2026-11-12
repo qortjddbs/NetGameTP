@@ -149,6 +149,7 @@ void OnLogin(int id, CS_LOGIN_PACKET* p)
 
 	// 3) 이미 접속해 있던 사람들 정보를 새 플레이어에게 (락 안에서 복사만)
 	SC_PLAYER_INFO_PACKET others[MAX_PLAYER];
+	bool othersReady[MAX_PLAYER] = {};
 	int count = 0;
 	EnterCriticalSection(&g_csPlayers);
 	for (int i = 0; i < MAX_PLAYER; ++i) {
@@ -157,11 +158,21 @@ void OnLogin(int id, CS_LOGIN_PACKET* p)
 		others[count].type = SC_PLAYER_INFO;
 		others[count].id = (char)i;
 		strncpy_s(others[count].name, NAME_LEN, g_players[i].m_name, _TRUNCATE);
+		othersReady[count] = g_players[i].m_ready;
 		++count;
 	}
 	LeaveCriticalSection(&g_csPlayers);
-	for (int i = 0; i < count; ++i)
-		SendPacket(id, &others[i], sizeof(others[i]));   // 락 밖에서 전송
+	for (int i = 0; i < count; ++i) {
+		SendPacket(id, &others[i], sizeof(others[i]));
+		if (othersReady[i]) {
+			SC_READY_PACKET rp;
+			rp.size = sizeof(rp);
+			rp.type = SC_READY;
+			rp.id = others[i].id;
+			rp.isReady = true;
+			SendPacket(id, &rp, sizeof(rp));
+		}
+	}
 
 	// 4) 새 플레이어 정보를 전원에게
 	SC_PLAYER_INFO_PACKET info;
