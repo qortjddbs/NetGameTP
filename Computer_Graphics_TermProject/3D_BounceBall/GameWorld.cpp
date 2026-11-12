@@ -8,6 +8,9 @@
 #include "MapData.h"
 #pragma comment(lib, "winmm.lib")
 
+extern CRITICAL_SECTION g_csNet;
+extern int g_startCountdown;
+
 GameWorld::GameWorld(GLuint shaderID)
 	: shaderProgramID_(shaderID)
 	, gameState_(GameState::TITLE)
@@ -439,9 +442,21 @@ void GameWorld::reset(bool inputX)
 
 void GameWorld::update(float deltaTime)
 {
+	// 서버에서 SC_GAME_START를 받았으면 카운트다운 시작
+	int cd;
+	EnterCriticalSection(&g_csNet);
+	cd = g_startCountdown;
+	g_startCountdown = -1;
+	LeaveCriticalSection(&g_csNet);
+
+	if (cd >= 0 && (gameState_ == GameState::LOBBY)) {
+		startCountdown((float)cd);
+	}
+
 	// 카운트다운: 시간이 다 되면 게임 시작
 	if (gameState_ == GameState::COUNTDOWN) {
 		countdownTime_ -= deltaTime;
+
 		if (countdownTime_ <= 0.0f) {
 			startGame();
 		}
@@ -547,7 +562,7 @@ void GameWorld::draw()
 // 새로운 함수: UI 그리기
 void GameWorld::drawUI()
 {
-	if (gameState_ != GameState::PLAYING) return;
+	if (gameState_ != GameState::PLAYING && gameState_ != GameState::COUNTDOWN) return;
 
 	// 셰이더 비활성화
 	glUseProgram(0);
@@ -566,14 +581,35 @@ void GameWorld::drawUI()
 	glDisable(GL_LIGHTING);
 
 	// 별 개수 표시 (왼쪽 위)
+	float windowWidth = (float)glutGet(GLUT_WINDOW_WIDTH);
 	float windowHeight = (float)glutGet(GLUT_WINDOW_HEIGHT);
 
-	glColor3f(1.0f, 1.0f, 0.0f);  // 노란색
-	glRasterPos2f(20.0f, windowHeight - 30.0f);
+	if (gameState_ == GameState::COUNTDOWN) {
+		// 카운트다운 숫자 (화면 중앙, 3 → 2 → 1)
+		int num = (int)ceilf(countdownTime_);
+		if (num < 1) num = 1;
+		std::string countText = std::to_string(num);
 
-	std::string starText = "Stars: " + std::to_string(collectedStars_) + "/" + std::to_string(totalStars_);
-	for (char c : starText) {
-		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
+		glColor3f(1.0f, 1.0f, 0.0f);  // 노란색
+		glLineWidth(6.0f);
+		glPushMatrix();
+		glTranslatef(windowWidth / 2.0f - 40.0f, windowHeight / 2.0f - 60.0f, 0.0f);
+		glScalef(1.2f, 1.2f, 1.0f);   // 숫자 크기
+		for (char c : countText) {
+			glutStrokeCharacter(GLUT_STROKE_ROMAN, c);
+		}
+		glPopMatrix();
+		glLineWidth(1.0f);
+	}
+
+	else {
+		glColor3f(1.0f, 1.0f, 0.0f);  // 노란색
+		glRasterPos2f(20.0f, windowHeight - 30.0f);
+
+		std::string starText = "Stars: " + std::to_string(collectedStars_) + "/" + std::to_string(totalStars_);
+		for (char c : starText) {
+			glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
+		}
 	}
 
 	// 점수 표시 (왼쪽 위 두 번째 줄)

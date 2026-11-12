@@ -56,18 +56,21 @@ void InputHandler::handleKeyboard(unsigned char key, int x, int y)
 			gameWorld_->startGame();
 			return;
 		}
+
 		if (key == '\r') {			// Enter
-			if (state == GameState::TITLE) gameWorld_->enterLobby();
-			bool ready = gameWorld_->toggleReady();
-			SendReady(ready);
-			std::cout << "Ready: " << (ready ? "ON" : "OFF") << std::endl;
+			if (state == GameState::TITLE) {
+				gameWorld_->enterLobby();
+			}
+			else if (state == GameState::LOBBY) {
+				bool ready = gameWorld_->toggleReady();
+				SendReady(ready);
+				std::cout << "Ready: " << (ready ? "ON" : "OFF") << std::endl;
+			}
 		}
-		//=======================================
-		if (key == 'g' || key == 'G') {
-			gameWorld_->startCountdown(3.0f); // SC_GAME_START 연결 후 삭제, 타이머 테스트용
+
+		if (key == 'q' || key == 'Q') {
+			exit(0);
 		}
-		//=======================================
-		if (key == 'q' || key == 'Q') exit(0);
 		return;
 	}
 

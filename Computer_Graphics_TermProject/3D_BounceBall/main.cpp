@@ -101,7 +101,7 @@ char* filetobuf(const char* file)
 
 void main(int argc, char** argv)
 {
-	InitializeCriticalSection(&g_csNet); // 임계영역 사용을 위해 초기화
+	InitNet();
 
 	char ip[32], name[NAME_LEN];
 	printf("Server IP: ");
