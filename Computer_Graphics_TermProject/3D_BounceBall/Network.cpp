@@ -1,4 +1,4 @@
-#include "Network.h"
+﻿#include "Network.h"
 #include "Protocol.h"
 #include "GameWorld.h"
 #include <stdio.h>
@@ -52,7 +52,7 @@ bool ConnectServer(const char* ip)
     return true;
 }
 
-// 헤더(3byte) -> 본문 순서로 패킷 1개를 정확히 받음
+// 헤더(2byte) -> 본문 순서로 패킷 1개를 정확히 받음
 bool RecvPacket(char* buf)
 {
     // 1) 헤더
@@ -120,6 +120,7 @@ void ProcessServerPacket(char* buf)
         g_playerReady[(int)p->id] = p->isReady;
         LeaveCriticalSection(&g_csNet);
         printf("[RECV] ready: id=%d %s\n", p->id, p->isReady ? "ON" : "OFF");
+        break;
     }
     case SC_GAME_START: {
         SC_GAME_START_PACKET* p = (SC_GAME_START_PACKET*)buf;
