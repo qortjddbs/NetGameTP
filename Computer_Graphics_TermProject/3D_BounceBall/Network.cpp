@@ -18,6 +18,12 @@ bool g_playerReady[MAX_PLAYER] = { false, };
 bool g_playerConnected[MAX_PLAYER] = { false, };
 
 CRITICAL_SECTION g_csNet;
+int g_startCountdown = -1;
+
+void InitNet()  // 필요한 초기화 작업이 생기면 여기에 추가
+{
+    InitializeCriticalSection(&g_csNet);
+}
 
 bool ConnectServer(const char* ip)
 {
@@ -107,11 +113,20 @@ void ProcessServerPacket(char* buf)
     }
     case SC_READY: {
         SC_READY_PACKET* p = (SC_READY_PACKET*)buf;
-        if (p->id < 0 || p->id >= MAX_PLAYER) break;
-        EnterCriticalSection(&g_csNet);  // 추가
+        if (p->id < 0 || p->id >= MAX_PLAYER) {
+            break;
+        }
+        EnterCriticalSection(&g_csNet);
         g_playerReady[(int)p->id] = p->isReady;
-        LeaveCriticalSection(&g_csNet);  // 추가
+        LeaveCriticalSection(&g_csNet);
         printf("[RECV] ready: id=%d %s\n", p->id, p->isReady ? "ON" : "OFF");
+    }
+    case SC_GAME_START: {
+        SC_GAME_START_PACKET* p = (SC_GAME_START_PACKET*)buf;
+        EnterCriticalSection(&g_csNet);
+        g_startCountdown = p->countdown;
+        LeaveCriticalSection(&g_csNet);
+        printf("[RECV] game start: countdown %d\n", p->countdown);
         break;
     }
     default:
