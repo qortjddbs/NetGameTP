@@ -200,7 +200,7 @@ void OnMove(int id, CS_MOVE_PACKET* packet)
 	}
 
 	// 좌표 출력
-	printf("[player %d], x=%.2f, y=%.2f, z=%.2f\n", id, packet->x, packet->y, packet->z);
+	// printf("[player %d], x=%.2f, y=%.2f, z=%.2f\n", id, packet->x, packet->y, packet->z);
 
 	LeaveCriticalSection(&g_csPlayers);
 }
@@ -330,7 +330,8 @@ DWORD WINAPI ProcessClient(LPVOID arg)
 	while (1) {
 		if (!RecvPacket(sock, buf)) break;		// 끊기거나 오류면 종료
 		PacketHeader* header = (PacketHeader*)buf;
-		printf("[Player %d] 패킷 수신: type=%d, size=%d\n", id, header->type, header->size);
+		if (header->type != CS_MOVE)
+			printf("[Player %d] 패킷 수신: type=%d, size=%d\n", id, header->type, header->size);
 		ProcessPacket(id, buf);
 	}
 
@@ -359,28 +360,39 @@ DWORD WINAPI LogicThread(LPVOID arg) {
 
 	printf("게임 시작!!\n");
 
-	SC_GHOST_PACKET gp{};
+	int tick = 0;
 
-	EnterCriticalSection(&g_csPlayers);
-	for (int i = 0; i < MAX_PLAYER; ++i) {
-		if (g_players[i].m_connect) {
-			gp.ghost[gp.count].id = (char)g_players[i].m_id;
-			gp.ghost[gp.count].x = g_players[i].m_x;
-			gp.ghost[gp.count].y = g_players[i].m_y;
-			gp.ghost[gp.count].z = g_players[i].m_z;
-			gp.count++;
+	while (true) {
+		SC_GHOST_PACKET gp{};
+
+		EnterCriticalSection(&g_csPlayers);
+		for (int i = 0; i < MAX_PLAYER; ++i) {
+			if (g_players[i].m_connect) {
+				gp.ghost[gp.count].id = (char)g_players[i].m_id;
+				gp.ghost[gp.count].x = g_players[i].m_x;
+				gp.ghost[gp.count].y = g_players[i].m_y;
+				gp.ghost[gp.count].z = g_players[i].m_z;
+				gp.count++;
+			}
 		}
+		LeaveCriticalSection(&g_csPlayers);
+
+		gp.type = SC_GHOST;
+		gp.size = sizeof(gp);
+
+		SendPacketToAll(&gp, sizeof(gp));
+
+		if (++tick % 30 == 0) {
+			printf("[GHOST] count=%d", gp.count);
+			for (int i = 0; i < gp.count; ++i)
+				printf(" | id%d (%.1f, %.1f, %.1f)", gp.ghost[i].id, gp.ghost[i].x, gp.ghost[i].y, gp.ghost[i].z);
+			printf("\n");
+		}
+
+		// 게임이 끝났는 지 확인 -> 끝났으면 반복 종료
+
+		Sleep(33);
 	}
-	LeaveCriticalSection(&g_csPlayers);
-	
-	gp.type = SC_GHOST;
-	gp.size = sizeof(gp);
-
-	SendPacketToAll(&gp, sizeof(gp));
-
-	// 게임이 끝났는 지 확인 -> 끝났으면 반복 종료
-
-	Sleep(33);
 
 	return 0;
 }
