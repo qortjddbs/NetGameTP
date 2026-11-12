@@ -44,4 +44,5 @@ void STAR::onCollision(ParentModel* other) {
 void STAR::reset() {
 	ParentModel::reset();  // 부모 클래스의 reset 호출
 	isCollected_ = false;  // 수집 상태 초기화
+	sent_ = false;
 }

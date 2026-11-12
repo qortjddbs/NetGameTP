@@ -59,6 +59,7 @@ class STAR : public ParentModel
 {
 public:
 	bool isCollected_ = false;
+	bool sent_ = false; // º° È¹µæ ¾Ë¸² Àü¼Û ¿©ºÎ
 
 	CollisionType getCollisionType() const override;
 	void onCollision(ParentModel* other) override;
