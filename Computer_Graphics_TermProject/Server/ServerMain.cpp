@@ -348,7 +348,28 @@ DWORD WINAPI LogicThread(LPVOID arg) {
 
 	printf("게임 시작!!\n");
 
-	// 나중에 채울 예정
+	SC_GHOST_PACKET gp{};
+
+	EnterCriticalSection(&g_csPlayers);
+	for (int i = 0; i < MAX_PLAYER; ++i) {
+		if (g_players[i].m_connect) {
+			gp.ghost[gp.count].id = (char)g_players[i].m_id;
+			gp.ghost[gp.count].x = g_players[i].m_x;
+			gp.ghost[gp.count].y = g_players[i].m_y;
+			gp.ghost[gp.count].z = g_players[i].m_z;
+			gp.count++;
+		}
+	}
+	LeaveCriticalSection(&g_csPlayers);
+	
+	gp.type = SC_GHOST;
+	gp.size = sizeof(gp);
+
+	SendPacketToAll(&gp, sizeof(gp));
+
+	// 게임이 끝났는 지 확인 -> 끝났으면 반복 종료
+
+	Sleep(33);
 
 	return 0;
 }
