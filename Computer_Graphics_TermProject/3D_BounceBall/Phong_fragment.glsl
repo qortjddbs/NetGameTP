@@ -1,4 +1,4 @@
-#version 330 core
+﻿#version 330 core
 
 in vec3 FragPos;
 in vec3 Normal;
@@ -15,6 +15,7 @@ uniform bool turnOnLight;     // 조명 ON/OFF
 uniform float lightIntensity; // 광원 세기
 uniform sampler2D texture1;  // 텍스처 샘플러 추가
 uniform bool useTexture;     // 텍스처 사용 여부
+uniform float alpha;
 
 void main()
 { 
@@ -22,7 +23,7 @@ void main()
     
     if (!turnOnLight) {
         // 조명이 꺼져있으면 색상만 출력
-        FragColor = vec4(baseColor, 1.0);
+        FragColor = vec4(baseColor, alpha);
         return;
     }
 
@@ -45,5 +46,5 @@ void main()
     vec3 specular = specularLight * lightColor; //--- 거울 반사 조명값: 거울반사값 * 조명색상값
     
     vec3 result = (ambient + diffuse + specular) * baseColor; //--- 최종 조명 설정된 픽셀 색상: (주변+산란반사+거울반사조명)*객체 색상
-    FragColor = vec4(result, 1.0); //--- 픽셀 색을 출력
+    FragColor = vec4(result, alpha); //--- 픽셀 색을 출력
 }

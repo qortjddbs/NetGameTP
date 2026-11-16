@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS
+ï»¿#define _CRT_SECURE_NO_WARNINGS
 #define STB_IMAGE_IMPLEMENTATION
 #include "Network.h"
 #include "Headers.h"
@@ -17,19 +17,19 @@ std::uniform_real_distribution<float> Fspeed(0.01f, 0.07f);
 #define WINDOW_WIDTH 1200
 #define WINDOW_HEIGHT 800
 
-// === °ÔÀÓ °´Ã¼ ===
+// === ê²Œìž„ ê°ì²´ ===
 GameWorld* gameWorld = nullptr;
 InputHandler* inputHandler = nullptr;
 Camera* camera = nullptr;
 
-// === °ÔÀÓ ½Ã°£ °ü¸® ===
+// === ê²Œìž„ ì‹œê°„ ê´€ë¦¬ ===
 float deltaTime = 0.0f;
 int lastTime = 0;
 
 GLuint VBO, VAO;
 AXIS Axis;
 
-// ·»´õ¸µ ¼³Á¤
+// ë Œë”ë§ ì„¤ì •
 bool DepthTest = true;
 bool CullFace = false;
 bool ProjectionPerspective = true;
@@ -60,7 +60,7 @@ GLuint shaderProgramID;
 GLuint vertexShader;
 GLuint fragmentShader;
 
-// Á¶¸í ¼³Á¤
+// ì¡°ëª… ì„¤ì •
 bool turnOnLight = true;
 glm::vec3 lightPos = glm::vec3(-50.0f, 100.0f, -70.0f);
 glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -107,7 +107,7 @@ void main(int argc, char** argv)
 	printf("Server IP: ");
 	scanf_s("%31s", ip, (unsigned)sizeof(ip));
 
-	if (strcmp(ip, "0") != 0) {                       // ¿Â¶óÀÎ ¸ðµå, 0À» ÀÔ·ÂÇÏ¸é ¿ÀÇÁ¶óÀÎ ¸ðµå(¼­¹ö¾øÀÌ ½ÇÇàÇÒ ¼ö ÀÖÀ½)
+	if (strcmp(ip, "0") != 0) {                       // ì˜¨ë¼ì¸ ëª¨ë“œ, 0ì„ ìž…ë ¥í•˜ë©´ ì˜¤í”„ë¼ì¸ ëª¨ë“œ(ì„œë²„ì—†ì´ ì‹¤í–‰í•  ìˆ˜ ìžˆìŒ)
 		printf("Nickname: ");
 		scanf_s("%15s", name, (unsigned)sizeof(name));
 
@@ -116,7 +116,7 @@ void main(int argc, char** argv)
 		}
 		SendLogin(name);
 
-		// ¼­¹ö ÀÀ´äÀ» ÃÖ´ë 3ÃÊ ±â´Ù¸²
+		// ì„œë²„ ì‘ë‹µì„ ìµœëŒ€ 3ì´ˆ ê¸°ë‹¤ë¦¼
 		if (WaitForSingleObject(g_hLoginEvent, 3000) != WAIT_OBJECT_0) {
 			printf("login timeout\n");
 			return;
@@ -140,7 +140,7 @@ void main(int argc, char** argv)
 
 	init();
 
-	// Camera »ý¼º
+	// Camera ìƒì„±
 	camera = new Camera();
 	camera->setRoll(glm::radians(45.0f));
 	camera->setTarget(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -149,14 +149,14 @@ void main(int argc, char** argv)
 	float dis = glm::length(camera->getPosition() - camera->getTarget());
 	camera->orbitAroundTarget(dis, cameraYaw, cameraPitch, true);
 
-	// GameWorld »ý¼º
+	// GameWorld ìƒì„±
 	gameWorld = new GameWorld(shaderProgramID);
 	gameWorld->initialize();
 
-	// InputHandler »ý¼º ¹× ¼³Á¤
+	// InputHandler ìƒì„± ë° ì„¤ì •
 	inputHandler = new InputHandler();
 	inputHandler->setGameWorld(gameWorld);
-	inputHandler->setCamera(camera);  // Ä«¸Þ¶ó ¼³Á¤
+	inputHandler->setCamera(camera);  // ì¹´ë©”ë¼ ì„¤ì •
 	inputHandler->setRenderingSettings(&DepthTest, &CullFace, &ProjectionPerspective, &DrawSolid, &DrawWireframe);
 	inputHandler->setLightingSettings(&turnOnLight, &lightIntensity);
 	inputHandler->setPlayerMoveSpeed(gameWorld->getPlayer()->getSpeed());
@@ -177,13 +177,13 @@ void main(int argc, char** argv)
 	glutReshapeFunc(Reshape);
 	glutKeyboardFunc(KeyBoardDown);
 	glutKeyboardUpFunc(KeyBoardUp);
-	glutSpecialFunc(SpecialKey);        // ½ºÆä¼È Å° Ãß°¡
-	glutSpecialUpFunc(SpecialKeyUp);    // ½ºÆä¼È Å° Up Ãß°¡
+	glutSpecialFunc(SpecialKey);        // ìŠ¤íŽ˜ì…œ í‚¤ ì¶”ê°€
+	glutSpecialUpFunc(SpecialKeyUp);    // ìŠ¤íŽ˜ì…œ í‚¤ Up ì¶”ê°€
 	glutMouseFunc(Mouse);
 	glutMotionFunc(Move);
 	glutIdleFunc(Idle);
 
-	// Á¾·á ½Ã Á¤¸®
+	// ì¢…ë£Œ ì‹œ ì •ë¦¬
 	atexit([]() {
 		std::cout << "Cleaning up..." << std::endl;
 		if (gameWorld) {
@@ -217,7 +217,7 @@ void make_vertexShaders()
 	if (!result)
 	{
 		glGetShaderInfoLog(vertexShader, 512, NULL, errorLog);
-		std::cerr << "ERROR: vertex shader ÄÄÆÄÀÏ ½ÇÆÐ\n" << errorLog << std::endl;
+		std::cerr << "ERROR: vertex shader ì»´íŒŒì¼ ì‹¤íŒ¨\n" << errorLog << std::endl;
 		return;
 	}
 }
@@ -235,7 +235,7 @@ void make_fragmentShaders()
 	if (!result)
 	{
 		glGetShaderInfoLog(fragmentShader, 512, NULL, errorLog);
-		std::cerr << "ERROR: frag_shader ÄÄÆÄÀÏ ½ÇÆÐ\n" << errorLog << std::endl;
+		std::cerr << "ERROR: frag_shader ì»´íŒŒì¼ ì‹¤íŒ¨\n" << errorLog << std::endl;
 		return;
 	}
 }
@@ -254,7 +254,7 @@ GLuint make_shaderProgram()
 	glGetProgramiv(shaderID, GL_LINK_STATUS, &result);
 	if (!result) {
 		glGetProgramInfoLog(shaderID, 512, NULL, errorLog);
-		std::cerr << "ERROR: shader program ¿¬°á ½ÇÆÐ\n" << errorLog << std::endl;
+		std::cerr << "ERROR: shader program ì—°ê²° ì‹¤íŒ¨\n" << errorLog << std::endl;
 		return false;
 	}
 	glUseProgram(shaderID);
@@ -306,16 +306,20 @@ GLvoid drawScene()
 	glClearColor(bgR, bgG, bgB, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// ÅØ½ºÃ³ À¯´ÏÆû Àü´Þ
+	// í…ìŠ¤ì²˜ ìœ ë‹ˆí¼ ì „ë‹¬
 	GLint useTextureLoc = glGetUniformLocation(shaderProgramID, "useTexture");
 	glUniform1i(useTextureLoc, useTexture);
 
-	// Á¶¸í À¯´ÏÆû Àü´Þ
+	// ì¡°ëª… ìœ ë‹ˆí¼ ì „ë‹¬
 	GLint turnOnLightLoc = glGetUniformLocation(shaderProgramID, "turnOnLight");
 	glUniform1i(turnOnLightLoc, turnOnLight);
 
 	GLfloat lightIntensityLoc = glGetUniformLocation(shaderProgramID, "lightIntensity");
 	glUniform1f(lightIntensityLoc, lightIntensity);
+
+	// íˆ¬ëª…ë„ ê¸°ë³¸ê°’
+	GLint alphaLoc = glGetUniformLocation(shaderProgramID, "alpha");
+	glUniform1f(alphaLoc, 1.0f);
 
 	GLint lightPosLoc = glGetUniformLocation(shaderProgramID, "lightPos");
 	GLint lightColorLoc = glGetUniformLocation(shaderProgramID, "lightColor");
@@ -325,7 +329,7 @@ GLvoid drawScene()
 	glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
 	glUniform3fv(viewPosLoc, 1, glm::value_ptr(camera->getPosition()));
 
-	// View ¹× Projection ¸ÅÆ®¸¯½º
+	// View ë° Projection ë§¤íŠ¸ë¦­ìŠ¤
 	GLint viewLoc = glGetUniformLocation(shaderProgramID, "view");
 	GLint projLoc = glGetUniformLocation(shaderProgramID, "proj");
 
@@ -338,7 +342,7 @@ GLvoid drawScene()
 		camera->orbitAroundTarget(5.0f, cameraYaw, cameraPitch, ThirdPersonView);
 	}
 
-	// View ¸ÅÆ®¸¯½º °¡Á®¿À±â
+	// View ë§¤íŠ¸ë¦­ìŠ¤ ê°€ì ¸ì˜¤ê¸°
 	if (!ThirdPersonView) {
 		camera->setPosition(gameWorld->getPlayer()->getEyePosition());
 	}
@@ -349,13 +353,13 @@ GLvoid drawScene()
 	glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
 
-	// Ãà ±×¸®±â
+	// ì¶• ê·¸ë¦¬ê¸°
 	GLint modelLoc = glGetUniformLocation(shaderProgramID, "modelMat");
 	glm::mat4 axisModel = glm::mat4(1.0f);
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(axisModel));
 	// Axis.Draw();
 
-	// GameWorld ±×¸®±â
+	// GameWorld ê·¸ë¦¬ê¸°
 	if (gameWorld) {
 		gameWorld->draw();
 	}
@@ -384,7 +388,7 @@ GLvoid KeyBoardUp(unsigned char key, int x, int y)
 	glutPostRedisplay();
 }
 
-// ½ºÆä¼È Å° ÄÝ¹é ÇÔ¼ö ±¸Çö (main.cpp ÇÏ´Ü¿¡ Ãß°¡)
+// ìŠ¤íŽ˜ì…œ í‚¤ ì½œë°± í•¨ìˆ˜ êµ¬í˜„ (main.cpp í•˜ë‹¨ì— ì¶”ê°€)
 GLvoid SpecialKey(int key, int x, int y) {
 	if (inputHandler) {
 		inputHandler->handleSpecialKey(key, x, y);
