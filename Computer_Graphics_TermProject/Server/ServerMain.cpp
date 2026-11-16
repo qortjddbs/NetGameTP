@@ -216,6 +216,49 @@ bool CheckStar(int id, int starId)
 	return std::isfinite(distanceSquared) && distanceSquared <= STAR_RADIUS_CHECK * STAR_RADIUS_CHECK;
 }
 
+// 별 획득 요청 처리 및 결과 전송
+void OnStarGet(int id, CS_STAR_GET_PACKET* packet)
+{
+	if (id < 0 || id >= MAX_PLAYER || packet == nullptr) return;
+	if (packet->type != CS_STAR_GET || packet->size != sizeof(CS_STAR_GET_PACKET)) return;
+
+	const int starId = packet->starId;
+
+	SC_STAR_RESULT_PACKET result{};
+	result.size = static_cast<unsigned char>(sizeof(result));
+	result.type = SC_STAR_RESULT;
+	result.id = static_cast<char>(id);
+	result.starId = packet->starId;
+
+	// 검사부터 기록 과정을 임계영역으로 보호
+	EnterCriticalSection(&g_csPlayers);
+
+	if (!g_players[id].m_connect) {
+		LeaveCriticalSection(&g_csPlayers);
+		return;
+	}
+
+	result.success = CheckStar(id, starId);
+
+	if (result.success) {
+		// 별 획득 기록
+		g_players[id].m_starMask |= (1u << starId);
+
+		// 별 개수와 마지막 획득 시각 기록
+		++g_players[id].m_starCount;
+		g_players[id].m_lastStarTime = GetTickCount();
+	}
+
+	// 실패했을 때도 현재 서버의 별 개수를 전달
+	result.starCount = static_cast<char>(g_players[id].m_starCount);
+
+	LeaveCriticalSection(&g_csPlayers);
+
+	printf("[OnStarGet] id=%d, starId=%d, success=%d, count=%d\n", id, starId, static_cast<int>(result.success), static_cast<int>(result.starCount));
+
+	SendPacketToAll(&result, sizeof(result));
+}
+
 // 클라이언트가 보낸 위치를 서버에 저장
 void OnMove(int id, CS_MOVE_PACKET* packet)
 {
@@ -292,7 +335,7 @@ void ProcessPacket(int id, char* buf)
 		OnMove(id, (CS_MOVE_PACKET*)buf);
 		break;
 	case CS_STAR_GET:
-		//OnStarGet(id, (CS_STAR_GET_PACKET*)buf);
+		OnStarGet(id, (CS_STAR_GET_PACKET*)buf);
 		break;
 	case CS_ITEM_GET:
 		//OnItemGet(id, (CS_ITEM_GET_PACKET*)buf);
