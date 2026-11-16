@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // ===== 공용 상수 =====
 #define SERVER_PORT   9000

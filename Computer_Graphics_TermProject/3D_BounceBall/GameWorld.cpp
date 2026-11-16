@@ -1,9 +1,10 @@
-﻿#include "Network.h"
+﻿#include "Network.h"		// winsock2.h를 가장 먼저 (windows.h보다 앞에 와야 함)
 #include "GameWorld.h"
 #include <iostream>
 #include <windows.h>
 #include <mmsystem.h>
 #include <string>
+#include <array>
 #include "stb_image.h"
 #include "MapData.h"
 #pragma comment(lib, "winmm.lib")
@@ -374,6 +375,8 @@ void GameWorld::initialize()
 	player_.setTranslation(spawnPoint_);  // 스폰 포인트에서 시작
 	player_.setSelfScale(glm::vec3(0.5f, 0.5f, 0.5f));
 	player_.radius_ = 0.5f * player_.getScaleFactor();
+
+	initGhosts();
 
 	// 맵 생성 (순서대로 배치)
 	createFloorBlocks();      // 기본 바닥 및 안전지대
@@ -1086,6 +1089,22 @@ void GameWorld::createStars()
 	//star8->setTranslation(glm::vec3(0.0f, 17.0f, -143.0f));
 	//star8->setSelfScale(glm::vec3(0.2f, 0.4f, 0.2f)); // 큰 별
 	//stars_.push_back(star8);
+}
+
+void GameWorld::initGhosts()
+{
+	// id별 고스트 색 (나 == 노랑)
+	const std::array<glm::vec3, MAX_PLAYER> colors = {
+		glm::vec3(1.0f, 0.3f, 0.3f),	// 빨강
+		glm::vec3(0.3f, 0.5f, 1.0f),	// 파랑
+		glm::vec3(0.3f, 1.0f, 0.4f)		// 초록
+	};
+
+	for (int i = 0; i < ghosts_.size(); ++i) {
+		ghosts_[i].init("obj/uv_sphere.obj", shaderProgramID_, colors[i].r, colors[i].g, colors[i].b);
+		ghosts_[i].setSelfScale(glm::vec3(0.5f, 0.5f, 0.5f));
+		ghostActive_[i] = false;
+	}
 }
 
 void GameWorld::resetBreakableBlocks()

@@ -1,9 +1,11 @@
-#pragma once
+ï»¿#pragma once
+#include <vector>
+#include <array>
 #include "Headers.h"
 #include "Player.h"
 #include "Block.h"
-#include <vector>
 #include "PathTrace.h"
+#include "Protocol.h"
 
 enum class GameState {
 	TITLE,
@@ -25,7 +27,7 @@ public:
 
 	void update(float deltaTime);
 	void draw();
-	void drawUI();  // UI ±×¸®±â Ãß°¡
+	void drawUI();  // UI ê·¸ë¦¬ê¸° ì¶”ê°€
 	void checkCollisions();
 
 	PLAYER* getPlayer() { return &player_; }
@@ -52,13 +54,13 @@ public:
 	void toggleTrajectory() { showTrajectory_ = !showTrajectory_; }
 	bool isTrajectoryVisible() const { return showTrajectory_; }
 
-	// º° °³¼ö °ü·Ã
+	// ë³„ ê°œìˆ˜ ê´€ë ¨
 	int getCollectedStars() const { return collectedStars_; }
 	int getTotalStars() const { return totalStars_; }
 
-	// ºÎ¼­Áø ºí·Ï º¹±¸
+	// ë¶€ì„œì§„ ë¸”ë¡ ë³µêµ¬
 	void resetBreakableBlocks();
-	// Áß·Â ºñÈ°¼ºÈ­ Åä±Û
+	// ì¤‘ë ¥ ë¹„í™œì„±í™” í† ê¸€
 	void toggleGravity() { activateGravity_ = !activateGravity_; }
 	bool getGravityStatus() const { return activateGravity_; }
 
@@ -66,6 +68,12 @@ private:
 	GLuint shaderProgramID_;
 
 	PLAYER player_;
+
+	// ê³ ìŠ¤íŠ¸ (ë‹¤ë¥¸ í”Œë ˆì´ì–´)
+	std::array<ParentModel, MAX_PLAYER> ghosts_;		// ê³ ìŠ¤íŠ¸ ê³µ ëª¨ë¸ (ìƒ‰ì€ idë§ˆë‹¤ ë‹¤ë¥´ê²Œ)
+	std::array<glm::vec3, MAX_PLAYER> ghostPos_{};		// ì§€ê¸ˆ ê·¸ë¦´ ìœ„ì¹˜
+	std::array<bool, MAX_PLAYER> ghostActive_{};		// trueì¸ ì¹¸ë§Œ ê·¸ë¦¼
+
 	std::vector<BLOCK*> blocks_;
 	std::vector<BOUNCE_BLOCK*> bounceBlocks_;
 	std::vector<BREAKABLE_BLOCK*> breakableBlocks_;
@@ -83,11 +91,11 @@ private:
 	GLuint titleTextureID_;
 	GLuint endingTextureID_;
 
-	// º° °³¼ö ÃßÀû
+	// ë³„ ê°œìˆ˜ ì¶”ì 
 	int collectedStars_;
 	int totalStars_;
 
-	// ¼¼ÀÌºê Æ÷ÀÎÆ®
+	// ì„¸ì´ë¸Œ í¬ì¸íŠ¸
 	glm::vec3 spawnPoint_;
 
 	void createFloorBlocks();
@@ -102,6 +110,8 @@ private:
 	void drawTitleScreen();
 	void drawEndingScreen();
 	void drawLobby();
+	void initGhosts();
+	void drawGhosts();
 	TrajectoryPredictor trajectoryPredictor_;
 
 public:
