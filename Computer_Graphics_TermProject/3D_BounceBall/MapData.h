@@ -2,6 +2,7 @@
 
 // ===== 별 =====
 const unsigned int STAR_COUNT = 7;
+const float STAR_RADIUS_CHECK = 3.0f;
 const float STAR_POS[STAR_COUNT][3] = {
     { 0.0f,  0.5f,  -10.0f}, { 0.0f,  8.0f,  -45.0f}, { 0.0f,  2.0f,  -60.0f},
     {-3.0f,  5.0f,  -80.0f}, { 0.0f, 10.0f, -107.0f}, { 0.0f, 12.0f, -130.0f},
