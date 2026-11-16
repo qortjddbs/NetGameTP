@@ -1,6 +1,7 @@
 ﻿#include "Common.h"
 #include "Protocol.h"
 #include "ServerData.h"
+#include "MapData.h"
 #include <cmath>
 
 Player g_players[MAX_PLAYER];
@@ -181,6 +182,38 @@ void OnLogin(int id, CS_LOGIN_PACKET* p)
 	info.id = (char)id;
 	strncpy_s(info.name, NAME_LEN, p->name, _TRUNCATE);
 	SendPacketToAll(&info, sizeof(info));
+}
+
+// 별 획득 체크만 하는 함수
+bool CheckStar(int id, int starId)
+{
+	
+	if (id < 0 || id >= MAX_PLAYER) return false;
+	if (starId < 0 || starId >= static_cast<int>(STAR_COUNT)) return false;
+
+	// 검사할 별에 해당하는 비트
+	const unsigned int starBit = 1u << starId;
+
+	EnterCriticalSection(&g_csPlayers);
+
+	const Player& player = g_players[id];
+
+	const bool connected = player.m_connect;
+	const bool alreadyCollected = (player.m_starMask & starBit) != 0;
+
+	// 서버에 저장된 플레이어 위치와 별 위치의 차이
+	const float dx = player.m_x - STAR_POS[starId][0];
+	const float dy = player.m_y - STAR_POS[starId][1];
+	const float dz = player.m_z - STAR_POS[starId][2];
+
+	const float distanceSquared = dx * dx + dy * dy + dz * dz;
+
+	LeaveCriticalSection(&g_csPlayers);
+
+	if (!connected || alreadyCollected) return false;
+
+	// 제곱 거리를 비교하므로 제곱근 계산이 필요 없음
+	return std::isfinite(distanceSquared) && distanceSquared <= STAR_RADIUS_CHECK * STAR_RADIUS_CHECK;
 }
 
 // 클라이언트가 보낸 위치를 서버에 저장
@@ -408,6 +441,7 @@ int main(int argc, char* argv[])
 
 	// 플레이어 전체 임계영역 초기화
 	InitializeCriticalSection(&g_csPlayers);
+
 
 	// 이벤트 초기화 (수동리셋, 비신호)
 	g_hStartEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
