@@ -558,6 +558,9 @@ void GameWorld::draw()
 	for (auto block : arrowBlocks_) block->draw();
 	for (auto star : stars_) star->draw();
 
+	// 고스트 그리기
+	drawGhosts();
+
 	// UI 그리기
 	drawUI();
 }
@@ -1100,11 +1103,35 @@ void GameWorld::initGhosts()
 		glm::vec3(0.3f, 1.0f, 0.4f)		// 초록
 	};
 
-	for (int i = 0; i < ghosts_.size(); ++i) {
+	for (size_t i = 0; i < ghosts_.size(); ++i) {
 		ghosts_[i].init("obj/uv_sphere.obj", shaderProgramID_, colors[i].r, colors[i].g, colors[i].b);
 		ghosts_[i].setSelfScale(glm::vec3(0.5f, 0.5f, 0.5f));
 		ghostActive_[i] = false;
 	}
+}
+
+void GameWorld::drawGhosts()
+{
+	GLint alphaLoc = glGetUniformLocation(shaderProgramID_, "alpha");
+
+	// 반투명 설정
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDepthMask(GL_FALSE);
+	glUniform1f(alphaLoc, 0.4f);
+
+	// 보이는 고스트만 그리기
+	for (size_t i = 0; i < ghosts_.size(); ++i) {
+		if (!ghostActive_[i]) continue;
+		if ((int)i == g_myId) continue;
+		ghosts_[i].setTranslation(ghostPos_[i]);
+		ghosts_[i].draw();
+	}
+
+	// 원래대로 되돌리기
+	glUniform1f(alphaLoc, 1.0f);
+	glDepthMask(GL_TRUE);
+	glDisable(GL_BLEND);
 }
 
 void GameWorld::resetBreakableBlocks()
