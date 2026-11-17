@@ -20,6 +20,8 @@ bool g_playerConnected[MAX_PLAYER] = { false, };
 CRITICAL_SECTION g_csNet;
 int g_startCountdown = -1;
 
+GhostNetData g_ghostNet[MAX_PLAYER] = {};
+
 void InitNet()  // 필요한 초기화 작업이 생기면 여기에 추가
 {
     InitializeCriticalSection(&g_csNet);
@@ -128,6 +130,26 @@ void ProcessServerPacket(char* buf)
         g_startCountdown = p->countdown;
         LeaveCriticalSection(&g_csNet);
         printf("[RECV] game start: countdown %d\n", p->countdown);
+        break;
+    }
+    case SC_GHOST: {
+        SC_GHOST_PACKET* p = (SC_GHOST_PACKET*)buf;
+        int count = p->count;
+        if (count < 0 || count > MAX_PLAYER) break;
+
+        EnterCriticalSection(&g_csNet);
+        for (int i = 0; i < count; ++i) {
+            int id = p->ghost[i].id;
+            if (id < 0 || id >= MAX_PLAYER) continue;
+            if (id == g_myId) continue;              // 내 위치는 로컬 물리로 움직이므로 무시
+
+            g_ghostNet[id].x = p->ghost[i].x;
+            g_ghostNet[id].y = p->ghost[i].y;
+            g_ghostNet[id].z = p->ghost[i].z;
+            g_ghostNet[id].active = true;
+            g_ghostNet[id].updated = true;
+        }
+        LeaveCriticalSection(&g_csNet);
         break;
     }
     default:

@@ -19,6 +19,14 @@ extern bool g_playerConnected[MAX_PLAYER];
 extern CRITICAL_SECTION g_csNet;      // 수신 스레드 <-> 메인 스레드 공유 데이터 보호
 extern int g_startCountdown;          // SC_GAME_START 수신 값 (-1이면 X)
 
+// SC_GHOST로 받은 다른 플레이어 위치 (수신 스레드가 쓰고, 메인 스레드가 g_csNet 안에서 읽음)
+struct GhostNetData {
+    bool  active;        // 위치를 한 번이라도 받았는가
+    bool  updated;       // 메인이 아직 안 읽은 새 위치가 있는가
+    float x, y, z;       // 가장 최근 위치
+};
+extern GhostNetData g_ghostNet[MAX_PLAYER];
+
 void InitNet();                       // g_csNet 초기화 (main 시작 시 1번 호출)
 
 bool ConnectServer(const char* ip);
