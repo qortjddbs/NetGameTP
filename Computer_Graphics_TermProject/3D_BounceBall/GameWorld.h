@@ -1,4 +1,5 @@
 #pragma once
+#include "Protocol.h"
 #include "Headers.h"
 #include "Player.h"
 #include "Block.h"
@@ -28,6 +29,7 @@ public:
 	void draw();
 	void drawUI();  // UI 그리기 추가
 	void checkCollisions();
+	void onStarResult(const SC_STAR_RESULT_PACKET& packet);
 
 	PLAYER* getPlayer() { return &player_; }
 
@@ -92,6 +94,7 @@ private:
 
 	// 별 개수 추적
 	int collectedStars_;
+	int playerStarCount_[MAX_PLAYER]{}; // 플레이어 별 개수 추적
 	int totalStars_;
 
 	// 세이브 포인트
