@@ -704,10 +704,11 @@ void GameWorld::checkCollisions()
 
 			if (star->isCollected_) {
 
-				// 단순 출력문으로 별 획득 처리 확인임 추후에 코드 연결
-				star->sent_ = true;
-				printf("[GetStar] 별 획득 처리: id=%d, sent=%d\n", star->m_id, static_cast<int>(star->sent_));
-
+				if (!star->sent_ && g_sock != INVALID_SOCKET) {
+					SendStarGet(star->m_id);
+					star->sent_ = true;
+				}
+				
 				PlaySound(L"sounds\\star.wav", NULL, SND_FILENAME | SND_ASYNC);
 				addScore(50);
 				collectedStars_++;  // 별 개수 증가

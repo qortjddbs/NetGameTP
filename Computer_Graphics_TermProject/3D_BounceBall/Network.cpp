@@ -1,5 +1,6 @@
 ﻿#include "Network.h"
 #include "Protocol.h"
+#include "MapData.h"
 #include "GameWorld.h"
 #include <stdio.h>
 
@@ -222,4 +223,38 @@ void SendMove(int value)
 
     // 다음 호출 예약
     glutTimerFunc(33, SendMove, 0);
+}
+
+void SendStarGet(int starId)
+{
+    if (g_sock == INVALID_SOCKET ||
+        starId < 0 ||
+        starId >= static_cast<int>(STAR_COUNT))
+        return;
+
+    CS_STAR_GET_PACKET packet{};
+    packet.size = static_cast<unsigned char>(sizeof(packet));
+    packet.type = CS_STAR_GET;
+    packet.starId = static_cast<char>(starId);
+
+    const char* data =
+        reinterpret_cast<const char*>(&packet);
+
+    const int size = static_cast<int>(sizeof(packet));
+    int totalSent = 0;
+
+    while (totalSent < size) {
+        int sent = send(
+            g_sock, data + totalSent, size - totalSent, 0);
+
+        if (sent == SOCKET_ERROR || sent == 0) {
+            printf("[SendStarGet] 전송 실패: starId=%d\n", starId);
+            shutdown(g_sock, SD_BOTH);
+            return;
+        }
+
+        totalSent += sent;
+    }
+
+    printf("[SendStarGet] 전송 완료: starId=%d\n", starId);
 }

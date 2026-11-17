@@ -36,3 +36,4 @@ void ProcessServerPacket(char* buf);
 void SendLogin(const char* name);
 void SendReady(bool isReady);
 void SendMove(int value);
+void SendStarGet(int starId);
