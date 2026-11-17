@@ -442,6 +442,22 @@ void GameWorld::reset(bool inputX)
 		<< spawnPoint_.x << ", " << spawnPoint_.y << ", " << spawnPoint_.z << ")" << std::endl;
 }
 
+void GameWorld::onStarResult(const SC_STAR_RESULT_PACKET& packet)
+{
+	const int id = packet.id;
+	const int count = packet.starCount;
+
+	if (id < 0 || id > MAX_PLAYER) return;
+	if (count < 0 || count > static_cast<int>(STAR_COUNT)) return;
+
+	printf("[StarResult] id=%d, success=%d, count=%d\n", id, static_cast<int>(packet.success), count);
+
+	if (!packet.success) return; // 획득 미인정 시 결과 반영 x
+	if (id == g_myId) return; // 자신 별 개수는 충돌 시 이미 반영했기 때문에 제외
+
+	playerStarCount_[id] = count; // 다른 플레이어의 별 개수 서버 값으로 갱신
+}
+
 void GameWorld::update(float deltaTime)
 {
 	processNetEvents();
