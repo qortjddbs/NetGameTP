@@ -3,6 +3,7 @@
 #include "Player.h"
 #include "Block.h"
 #include <vector>
+#include <array>
 #include "PathTrace.h"
 
 enum class GameState {
@@ -66,6 +67,12 @@ private:
 	GLuint shaderProgramID_;
 
 	PLAYER player_;
+
+	// 고스트 (다른 플레이어)
+	std::array<ParentModel, MAX_PLAYER> ghosts_;		// 고스트 공 모델 (색은 id마다 다르게)
+	std::array<glm::vec3, MAX_PLAYER> ghostPos_{};		// 지금 그릴 위치
+	std::array<bool, MAX_PLAYER> ghostActive_{};		// true인 칸만 그림
+
 	std::vector<BLOCK*> blocks_;
 	std::vector<BOUNCE_BLOCK*> bounceBlocks_;
 	std::vector<BREAKABLE_BLOCK*> breakableBlocks_;
@@ -102,7 +109,13 @@ private:
 	void drawTitleScreen();
 	void drawEndingScreen();
 	void drawLobby();
+	void initGhosts();
+	void drawGhosts();
+	void updateGhosts(float deltaTime);
+
 	TrajectoryPredictor trajectoryPredictor_;
+
+	void processNetEvents();
 
 public:
 	void  enterLobby() { gameState_ = GameState::LOBBY; isReady_ = false; }

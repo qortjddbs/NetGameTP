@@ -21,6 +21,10 @@ bool g_playerConnected[MAX_PLAYER] = { false, };
 CRITICAL_SECTION g_csNet;
 int g_startCountdown = -1;
 
+GhostNetData g_ghostNet[MAX_PLAYER] = {};
+
+static std::queue<NetEvent> g_eventQueue;
+
 void InitNet()  // 필요한 초기화 작업이 생기면 여기에 추가
 {
     InitializeCriticalSection(&g_csNet);
@@ -89,6 +93,30 @@ DWORD WINAPI ClientRecvThread(LPVOID arg)
    return 0;
 }
 
+static void PushNetEvent(const char* buf)
+{
+    const PacketHeader* header = (const PacketHeader*)buf;
+    if (header->size > NET_EVENT_SIZE) {    // 사이즈를 64로 넉넉잡아서 실행될 일은 없을 듯함, 만약 실행되면 패킷을 줄이거나 사이즈를 키울 것
+        printf("NetEvent too large: type=%d size=%d\n", header->type, header->size);
+        return;
+    }
+
+    NetEvent ev;
+    ev.type = header->type;
+    memcpy(ev.data, buf, header->size);         // 패킷 원본 복사 (buf는 다음 recv에 덮어써짐)
+
+    EnterCriticalSection(&g_csNet);
+    g_eventQueue.push(ev);
+    LeaveCriticalSection(&g_csNet);
+}
+
+void PopNetEvents(std::queue<NetEvent>& out)
+{
+    EnterCriticalSection(&g_csNet);
+	std::swap(out, g_eventQueue);               // 통째로 교환: 락을 아주 짧게만 잡음, 락을 잡은채로 pop을 반복하면 메인 스레드가 오래 기다리게 될수도 있음.
+    LeaveCriticalSection(&g_csNet);
+}
+
 void ProcessServerPacket(char* buf)
 {
     PacketHeader* header = (PacketHeader*)buf;
@@ -129,6 +157,42 @@ void ProcessServerPacket(char* buf)
         g_startCountdown = p->countdown;
         LeaveCriticalSection(&g_csNet);
         printf("[RECV] game start: countdown %d\n", p->countdown);
+        break;
+    }
+    case SC_GHOST: {
+        SC_GHOST_PACKET* p = (SC_GHOST_PACKET*)buf;
+        int count = p->count;
+        if (count < 0 || count > MAX_PLAYER) break;
+
+        EnterCriticalSection(&g_csNet);
+        for (int i = 0; i < count; ++i) {
+            int id = p->ghost[i].id;
+            if (id < 0 || id >= MAX_PLAYER) continue;
+            if (id == g_myId) continue;              // 내 위치는 로컬 물리로 움직이므로 무시
+
+            g_ghostNet[id].x = p->ghost[i].x;
+            g_ghostNet[id].y = p->ghost[i].y;
+            g_ghostNet[id].z = p->ghost[i].z;
+            g_ghostNet[id].active = true;
+            g_ghostNet[id].updated = true;
+        }
+        LeaveCriticalSection(&g_csNet);
+        break;
+    }
+    case SC_STAR_RESULT: {
+        PushNetEvent(buf);
+        break;
+    }
+    case SC_ITEM_RESULT: {
+        PushNetEvent(buf);
+        break;
+    }
+    case SC_GAME_END: {
+        PushNetEvent(buf);
+        break;
+    }
+    case SC_LEAVE: {
+        PushNetEvent(buf);
         break;
     }
     default:

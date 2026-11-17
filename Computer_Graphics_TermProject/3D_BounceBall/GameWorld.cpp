@@ -375,6 +375,8 @@ void GameWorld::initialize()
 	player_.setSelfScale(glm::vec3(0.5f, 0.5f, 0.5f));
 	player_.radius_ = 0.5f * player_.getScaleFactor();
 
+	initGhosts();
+
 	// 맵 생성 (순서대로 배치)
 	createFloorBlocks();      // 기본 바닥 및 안전지대
 	createBounceBlocks();     // 점프 구간
@@ -442,6 +444,8 @@ void GameWorld::reset(bool inputX)
 
 void GameWorld::update(float deltaTime)
 {
+	processNetEvents();
+
 	// 서버에서 SC_GAME_START를 받았으면 카운트다운 시작
 	int cd;
 	EnterCriticalSection(&g_csNet);
@@ -452,6 +456,8 @@ void GameWorld::update(float deltaTime)
 	if (cd >= 0 && (gameState_ == GameState::LOBBY)) {
 		startCountdown((float)cd);
 	}
+
+	updateGhosts(deltaTime);
 
 	// 카운트다운: 시간이 다 되면 게임 시작
 	if (gameState_ == GameState::COUNTDOWN) {
@@ -555,8 +561,8 @@ void GameWorld::draw()
 	for (auto block : arrowBlocks_) block->draw();
 	for (auto star : stars_) star->draw();
 
-	// UI 그리기
-	drawUI();
+	drawGhosts();	// 고스트 그리기
+	drawUI();		// UI 그리기
 }
 
 // 새로운 함수: UI 그리기
@@ -1089,10 +1095,98 @@ void GameWorld::createStars()
 	//stars_.push_back(star8);
 }
 
+void GameWorld::initGhosts()
+{
+	// id별 고스트 색 (나 == 노랑)
+	const std::array<glm::vec3, MAX_PLAYER> colors = {
+		glm::vec3(1.0f, 0.3f, 0.3f),	// 빨강
+		glm::vec3(0.3f, 0.5f, 1.0f),	// 파랑
+		glm::vec3(0.3f, 1.0f, 0.4f)		// 초록
+	};
+
+	for (size_t i = 0; i < ghosts_.size(); ++i) {
+		ghosts_[i].init("obj/uv_sphere.obj", shaderProgramID_, colors[i].r, colors[i].g, colors[i].b);
+		ghosts_[i].setSelfScale(glm::vec3(0.5f, 0.5f, 0.5f));
+		ghostActive_[i] = false;
+	}
+}
+
+void GameWorld::drawGhosts()
+{
+	GLint alphaLoc = glGetUniformLocation(shaderProgramID_, "alpha");
+
+	// 반투명 설정
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDepthMask(GL_FALSE);
+	glUniform1f(alphaLoc, 0.4f);
+
+	// 보이는 고스트만 그리기
+	for (size_t i = 0; i < ghosts_.size(); ++i) {
+		if (!ghostActive_[i]) continue;
+		if ((int)i == g_myId) continue;
+		ghosts_[i].setTranslation(ghostPos_[i]);
+		ghosts_[i].draw();
+	}
+
+	// 원래대로 되돌리기
+	glUniform1f(alphaLoc, 1.0f);
+	glDepthMask(GL_TRUE);
+	glDisable(GL_BLEND);
+}
+
+void GameWorld::updateGhosts(float deltaTime)
+{
+	// 수신 스레드가 쓴 위치를 락 안에서 복사만
+	GhostNetData net[MAX_PLAYER];
+	EnterCriticalSection(&g_csNet);
+	memcpy(net, g_ghostNet, sizeof(net));
+	for (int i = 0; i < MAX_PLAYER; ++i) g_ghostNet[i].updated = false;
+	LeaveCriticalSection(&g_csNet);
+
+	// 락 밖에서 그리기용 배열에 반영
+	for (int i = 0; i < MAX_PLAYER; ++i) {
+		ghostActive_[i] = net[i].active;
+		if (net[i].active) {
+			ghostPos_[i] = glm::vec3(net[i].x, net[i].y, net[i].z);   // 보간은 추가 필요
+		}
+	}
+}
+
 void GameWorld::resetBreakableBlocks()
 {
 	for (auto block : breakableBlocks_) {
 		block->isBroken_ = false;
 	}
 	std::cout << "Breakable blocks restored!" << std::endl;
+}
+
+void GameWorld::processNetEvents()
+{
+	std::queue<NetEvent> events;
+	PopNetEvents(events);                        // 락은 이 안에서만 잡힘
+
+	while (!events.empty()) {
+		NetEvent& ev = events.front();
+
+		switch (ev.type) {
+		case SC_STAR_RESULT:
+			// onStarResult((SC_STAR_RESULT_PACKET*)ev.data);
+			std::cout << "[EVENT] star result" << std::endl;
+			break;
+		case SC_ITEM_RESULT:
+			// onItemResult((SC_ITEM_RESULT_PACKET*)ev.data);
+			std::cout << "[EVENT] item result" << std::endl;
+			break;
+		case SC_GAME_END:
+			// 순위 저장 -> ENDING 전환
+			std::cout << "[EVENT] game end" << std::endl;
+			break;
+		case SC_LEAVE:
+			// 이탈 고스트 제거
+			std::cout << "[EVENT] leave" << std::endl;
+			break;
+		}
+		events.pop();
+	}
 }
