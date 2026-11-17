@@ -1,11 +1,9 @@
-ï»¿#pragma once
-#include <vector>
-#include <array>
+#pragma once
 #include "Headers.h"
 #include "Player.h"
 #include "Block.h"
+#include <vector>
 #include "PathTrace.h"
-#include "Protocol.h"
 
 enum class GameState {
 	TITLE,
@@ -27,7 +25,7 @@ public:
 
 	void update(float deltaTime);
 	void draw();
-	void drawUI();  // UI ê·¸ë¦¬ê¸° ì¶”ê°€
+	void drawUI();  // UI ±×¸®±â Ãß°¡
 	void checkCollisions();
 
 	PLAYER* getPlayer() { return &player_; }
@@ -54,13 +52,13 @@ public:
 	void toggleTrajectory() { showTrajectory_ = !showTrajectory_; }
 	bool isTrajectoryVisible() const { return showTrajectory_; }
 
-	// ë³„ ê°œìˆ˜ ê´€ë ¨
+	// º° °³¼ö °ü·Ã
 	int getCollectedStars() const { return collectedStars_; }
 	int getTotalStars() const { return totalStars_; }
 
-	// ë¶€ì„œì§„ ë¸”ë¡ ë³µêµ¬
+	// ºÎ¼­Áø ºí·Ï º¹±¸
 	void resetBreakableBlocks();
-	// ì¤‘ë ¥ ë¹„í™œì„±í™” í† ê¸€
+	// Áß·Â ºñÈ°¼ºÈ­ Åä±Û
 	void toggleGravity() { activateGravity_ = !activateGravity_; }
 	bool getGravityStatus() const { return activateGravity_; }
 
@@ -68,12 +66,6 @@ private:
 	GLuint shaderProgramID_;
 
 	PLAYER player_;
-
-	// ê³ ìŠ¤íŠ¸ (ë‹¤ë¥¸ í”Œë ˆì´ì–´)
-	std::array<ParentModel, MAX_PLAYER> ghosts_;		// ê³ ìŠ¤íŠ¸ ê³µ ëª¨ë¸ (ìƒ‰ì€ idë§ˆë‹¤ ë‹¤ë¥´ê²Œ)
-	std::array<glm::vec3, MAX_PLAYER> ghostPos_{};		// ì§€ê¸ˆ ê·¸ë¦´ ìœ„ì¹˜
-	std::array<bool, MAX_PLAYER> ghostActive_{};		// trueì¸ ì¹¸ë§Œ ê·¸ë¦¼
-
 	std::vector<BLOCK*> blocks_;
 	std::vector<BOUNCE_BLOCK*> bounceBlocks_;
 	std::vector<BREAKABLE_BLOCK*> breakableBlocks_;
@@ -91,11 +83,11 @@ private:
 	GLuint titleTextureID_;
 	GLuint endingTextureID_;
 
-	// ë³„ ê°œìˆ˜ ì¶”ì 
+	// º° °³¼ö ÃßÀû
 	int collectedStars_;
 	int totalStars_;
 
-	// ì„¸ì´ë¸Œ í¬ì¸íŠ¸
+	// ¼¼ÀÌºê Æ÷ÀÎÆ®
 	glm::vec3 spawnPoint_;
 
 	void createFloorBlocks();
@@ -110,9 +102,9 @@ private:
 	void drawTitleScreen();
 	void drawEndingScreen();
 	void drawLobby();
-	void initGhosts();
-	void drawGhosts();
 	TrajectoryPredictor trajectoryPredictor_;
+
+	void processNetEvents();
 
 public:
 	void  enterLobby() { gameState_ = GameState::LOBBY; isReady_ = false; }
