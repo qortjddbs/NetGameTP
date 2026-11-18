@@ -216,6 +216,92 @@ bool CheckStar(int id, int starId)
 	return std::isfinite(distanceSquared) && distanceSquared <= STAR_RADIUS_CHECK * STAR_RADIUS_CHECK;
 }
 
+// 아이템 획득 가능 여부만 검사
+bool CheckItem(int id, int itemId)
+{
+	if (id < 0 || id >= MAX_PLAYER)
+		return false;
+
+	if (itemId < 0 ||
+		itemId >= static_cast<int>(ITEM_COUNT))
+		return false;
+
+	const unsigned int itemBit = 1u << itemId;
+
+	EnterCriticalSection(&g_csPlayers);
+
+	const Player& player = g_players[id];
+
+	const bool connected = player.m_connect;
+	const bool alreadyCollected =
+		(player.m_itemMask & itemBit) != 0;
+
+	const ItemData& item = ITEM_LIST[itemId];
+
+	const float dx = player.m_x - item.x;
+	const float dy = player.m_y - item.y;
+	const float dz = player.m_z - item.z;
+
+	const float distanceSquared =
+		dx * dx + dy * dy + dz * dz;
+
+	LeaveCriticalSection(&g_csPlayers);
+
+	if (!connected || alreadyCollected)
+		return false;
+
+	return std::isfinite(distanceSquared) &&
+		distanceSquared <=
+		ITEM_RADIUS_CHECK * ITEM_RADIUS_CHECK;
+}
+
+// 아이템 획득 요청 처리
+void OnItemGet(int id, CS_ITEM_GET_PACKET* packet)
+{
+	if (id < 0 || id >= MAX_PLAYER || packet == nullptr)
+		return;
+
+	if (packet->type != CS_ITEM_GET ||
+		packet->size != sizeof(CS_ITEM_GET_PACKET))
+		return;
+
+	const int itemId = packet->itemId;
+
+	SC_ITEM_RESULT_PACKET result{};
+	bool success = false;
+
+	// 검사와 획득 기록을 같은 잠금 안에서 처리
+	EnterCriticalSection(&g_csPlayers);
+
+	if (CheckItem(id, itemId)) {
+		g_players[id].m_itemMask |= (1u << itemId);
+
+		result.size =
+			static_cast<unsigned char>(sizeof(result));
+		result.type = SC_ITEM_RESULT;
+		result.id = static_cast<char>(id);
+		result.itemId = static_cast<char>(itemId);
+		result.itemType =
+			static_cast<char>(ITEM_LIST[itemId].type);
+
+		success = true;
+	}
+
+	LeaveCriticalSection(&g_csPlayers);
+
+	if (!success) {
+		printf("[OnItemGet] 거절: id=%d, itemId=%d\n",
+			id, itemId);
+		return;
+	}
+
+	printf("[OnItemGet] 성공: id=%d, itemId=%d, itemType=%d\n",
+		id, itemId, static_cast<int>(result.itemType));
+
+	// 패킷 전송은 잠금 밖에서 실행
+	SendPacketToAll(&result, sizeof(result));
+}
+
 // 별 획득 요청 처리 및 결과 전송
 void OnStarGet(int id, CS_STAR_GET_PACKET* packet)
 {
@@ -338,7 +424,7 @@ void ProcessPacket(int id, char* buf)
 		OnStarGet(id, (CS_STAR_GET_PACKET*)buf);
 		break;
 	case CS_ITEM_GET:
-		//OnItemGet(id, (CS_ITEM_GET_PACKET*)buf);
+		OnItemGet(id, (CS_ITEM_GET_PACKET*)buf);
 		break;
 	default:
 		printf("[%d] 알 수 없는 패킷 type=%d\n", id, header->type);
