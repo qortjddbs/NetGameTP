@@ -184,6 +184,24 @@ void ProcessServerPacket(char* buf)
         break;
     }
     case SC_ITEM_RESULT: {
+
+        // 획득에 성공한 경우에만 패킷 전송
+        if (header->size != sizeof(SC_ITEM_RESULT_PACKET)) break;
+
+        SC_ITEM_RESULT_PACKET result{};
+        memcpy(&result, buf, sizeof(result));
+
+        const int id = result.id;
+        const int itemId = result.itemId;
+        const int itemType = result.itemType;
+
+        if (id < 0 || id >= MAX_PLAYER) break;
+        if (itemId < 0 || itemId >= static_cast<int>(ITEM_COUNT)) break;
+        if (itemType < 0 || itemType >= static_cast<int>(ITEM_TYPE::COUNT)) break;
+
+        printf("[ItemResult] id=%d, itemId=%d, itemType=%d\n",
+            id, itemId, itemType);
+
         PushNetEvent(buf);
         break;
     }
@@ -299,4 +317,43 @@ void SendStarGet(int starId)
     }
 
     printf("[SendStarGet] 전송 완료: starId=%d\n", starId);
+}
+
+// 획득한 아이템 ID를 서버에 알림
+void SendItemGet(int itemId)
+{
+    if (g_sock == INVALID_SOCKET ||
+        itemId < 0 ||
+        itemId >= static_cast<int>(ITEM_COUNT))
+        return;
+
+    CS_ITEM_GET_PACKET packet{};
+    packet.size = static_cast<unsigned char>(sizeof(packet));
+    packet.type = CS_ITEM_GET;
+    packet.itemId = static_cast<char>(itemId);
+
+    const char* data =
+        reinterpret_cast<const char*>(&packet);
+
+    const int size = static_cast<int>(sizeof(packet));
+    int totalSent = 0;
+
+    while (totalSent < size) {
+        int sent = send(
+            g_sock,
+            data + totalSent,
+            size - totalSent,
+            0
+        );
+
+        if (sent == SOCKET_ERROR || sent == 0) {
+            printf("[SendItemGet] 전송 실패: itemId=%d\n", itemId);
+            shutdown(g_sock, SD_BOTH);
+            return;
+        }
+
+        totalSent += sent;
+    }
+
+    printf("[SendItemGet] 전송 완료: itemId=%d\n", itemId);
 }
