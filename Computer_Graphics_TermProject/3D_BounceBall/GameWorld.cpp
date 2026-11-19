@@ -1160,12 +1160,30 @@ void GameWorld::updateGhosts(float deltaTime)
 	for (int i = 0; i < MAX_PLAYER; ++i) g_ghostNet[i].updated = false;
 	LeaveCriticalSection(&g_csNet);
 
-	// 락 밖에서 그리기용 배열에 반영
+	// 락 밖에서 보간 적용
+	const float LERP_SPEED = 15.0f;   // 클수록 빨리 따라감 (15면 약 0.1초 안에 거의 도착)
+	const float SNAP_DIST = 5.0f;     // 이보다 멀면 순간이동 (리스폰 등)
+	float t = LERP_SPEED * deltaTime;
+	if (t > 1.0f) t = 1.0f;           // 한 프레임에 목표를 넘어가지 않게
+
 	for (int i = 0; i < MAX_PLAYER; ++i) {
-		ghostActive_[i] = net[i].active;
-		if (net[i].active) {
-			ghostPos_[i] = glm::vec3(net[i].x, net[i].y, net[i].z);   // 보간은 추가 필요
+		if (!net[i].active) {
+			ghostActive_[i] = false;
+			continue;
 		}
+
+		ghostTarget_[i] = glm::vec3(net[i].x, net[i].y, net[i].z);       // 서버가 준 위치
+
+		// 처음 나타났거나 너무 멀리 떨어졌으면 -> 바로 그 자리로
+		if (!ghostActive_[i] || glm::length(ghostTarget_[i] - ghostPos_[i]) > SNAP_DIST) {
+			ghostPos_[i] = ghostTarget_[i];
+		}
+		else {
+			// 남은 거리의 t만큼 다가가기
+			ghostPos_[i] += (ghostTarget_[i] - ghostPos_[i]) * t;
+		}
+
+		ghostActive_[i] = true;
 	}
 }
 
