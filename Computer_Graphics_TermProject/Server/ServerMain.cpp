@@ -9,6 +9,10 @@ CRITICAL_SECTION g_csPlayers;
 CRITICAL_SECTION g_csSend[MAX_PLAYER]; // 같은 플레이어에게 보내는 패킷이 섞이지 않도록 보호
 HANDLE g_hStartEvent;
 
+enum class ServerState { LOBBY, PLAYING, END };
+ServerState g_gameState = ServerState::LOBBY;
+CRITICAL_SECTION g_csGame;
+
 // 한 명에게 전송
 void SendPacket(int id, void* packet, int size)
 {
@@ -375,19 +379,34 @@ void OnReady(int id, CS_READY_PACKET* packet)
 	if (packet->type != CS_READY || packet->size != sizeof(CS_READY_PACKET)) return;
 
 	int readyPlayers = 0;
+	bool inLobby = false;
+	bool startNow = false;
 
 	EnterCriticalSection(&g_csPlayers);
+	EnterCriticalSection(&g_csGame);
 
-	// 공유 데이터 임계영역으로 보호 및 접속 중인 플레이어만 준비 상태 갱신
-	if (g_players[id].m_connect) {
-		g_players[id].m_ready = packet->isReady;
+	if (g_gameState == ServerState::LOBBY) inLobby = true;
+
+	if (inLobby) {
+		// 공유 데이터 임계영역으로 보호 및 접속 중인 플레이어만 준비 상태 갱신
+		if (g_players[id].m_connect) {
+			g_players[id].m_ready = packet->isReady;
+		}
+
+		for (int i = 0; i < MAX_PLAYER; ++i) {
+			if (g_players[i].m_connect && g_players[i].m_ready) readyPlayers++;
+		}
+
+		if (readyPlayers == MAX_PLAYER) {
+			g_gameState = ServerState::PLAYING;
+			startNow = true;
+		}
 	}
 
-	for (int i = 0; i < MAX_PLAYER; ++i) {
-		if (g_players[i].m_connect && g_players[i].m_ready) readyPlayers++;
-	}
-
+	LeaveCriticalSection(&g_csGame);
 	LeaveCriticalSection(&g_csPlayers);
+
+	if (!inLobby) return;
 
 	// 준비 상태 출력 (준비 인원 n/3)
 	printf("[player %d], Ready - %s (%d/%d)\n", id, packet->isReady ? "ON" : "OFF", readyPlayers, MAX_PLAYER);
@@ -399,7 +418,7 @@ void OnReady(int id, CS_READY_PACKET* packet)
 	rp.isReady = packet->isReady;
 	SendPacketToAll(&rp, sizeof(rp));
 
-	if (readyPlayers == MAX_PLAYER) {
+	if (startNow) {
 		printf("3명 모두 준비 -> 시작 신호 on\n");
 		SetEvent(g_hStartEvent);
 	}
@@ -436,18 +455,26 @@ void ProcessPacket(int id, char* buf)
 int AssignPlayerId(SOCKET sock)
 {
 	int id = -1;
+
 	EnterCriticalSection(&g_csPlayers);
-	for (int i = 0; i < MAX_PLAYER; ++i) {
-		if (false == g_players[i].m_connect) {
-			memset(&g_players[i], 0, sizeof(Player));		// 이전 사람 정보 지우기
-			g_players[i].m_sock = sock;
-			g_players[i].m_id = i;
-			g_players[i].m_connect = true;
-			id = i;
-			break;
+	EnterCriticalSection(&g_csGame);
+
+	if (g_gameState == ServerState::LOBBY) {
+		for (int i = 0; i < MAX_PLAYER; ++i) {
+			if (false == g_players[i].m_connect) {
+				memset(&g_players[i], 0, sizeof(Player));		// 이전 사람 정보 지우기
+				g_players[i].m_sock = sock;
+				g_players[i].m_id = i;
+				g_players[i].m_connect = true;
+				id = i;
+				break;
+			}
 		}
 	}
+
+	LeaveCriticalSection(&g_csGame);
 	LeaveCriticalSection(&g_csPlayers);
+
 	return id;
 }
 
@@ -551,7 +578,11 @@ DWORD WINAPI LogicThread(LPVOID arg) {
 			printf("\n");
 		}
 
-		// 게임이 끝났는 지 확인 -> 끝났으면 반복 종료
+		bool end;
+		EnterCriticalSection(&g_csGame);
+		end = (g_gameState == ServerState::END);
+		LeaveCriticalSection(&g_csGame);
+		if (end) break;
 
 		Sleep(33);
 	}
@@ -568,9 +599,9 @@ int main(int argc, char* argv[])
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 		return 1;
 
-	// 플레이어 전체 임계영역 초기화
+	// 임계영역 초기화
 	InitializeCriticalSection(&g_csPlayers);
-
+	InitializeCriticalSection(&g_csGame);
 
 	// 이벤트 초기화 (수동리셋, 비신호)
 	g_hStartEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -633,7 +664,7 @@ int main(int argc, char* argv[])
 
 		int id = AssignPlayerId(client_sock);
 		if (id == -1) {
-			printf("[서버] 자리 없음, 접속 거부\n"); 
+			printf("[서버] 자리 없음 또는 게임 진행 중, 접속 거부\n");
 			closesocket(client_sock);
 			continue;
 		}
@@ -658,6 +689,7 @@ int main(int argc, char* argv[])
 	closesocket(listen_sock);
 	WSACleanup();
 	CloseHandle(g_hStartEvent);
+	DeleteCriticalSection(&g_csGame);
 	DeleteCriticalSection(&g_csPlayers);
 	return 0;
 }
