@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "Protocol.h"
 #include "Headers.h"
 #include "Player.h"
@@ -27,7 +27,7 @@ public:
 
 	void update(float deltaTime);
 	void draw();
-	void drawUI();  // UI ±×¸®±â Ãß°¡
+	void drawUI();  // UI ê·¸ë¦¬ê¸° ì¶”ê°€
 	void checkCollisions();
 	void onStarResult(const SC_STAR_RESULT_PACKET& packet);
 
@@ -55,13 +55,13 @@ public:
 	void toggleTrajectory() { showTrajectory_ = !showTrajectory_; }
 	bool isTrajectoryVisible() const { return showTrajectory_; }
 
-	// º° °³¼ö °ü·Ã
+	// ë³„ ê°œìˆ˜ ê´€ë ¨
 	int getCollectedStars() const { return collectedStars_; }
 	int getTotalStars() const { return totalStars_; }
 
-	// ºÎ¼­Áø ºí·Ï º¹±¸
+	// ë¶€ì„œì§„ ë¸”ë¡ ë³µêµ¬
 	void resetBreakableBlocks();
-	// Áß·Â ºñÈ°¼ºÈ­ Åä±Û
+	// ì¤‘ë ¥ ë¹„í™œì„±í™” í† ê¸€
 	void toggleGravity() { activateGravity_ = !activateGravity_; }
 	bool getGravityStatus() const { return activateGravity_; }
 
@@ -70,10 +70,11 @@ private:
 
 	PLAYER player_;
 
-	// °í½ºÆ® (´Ù¸¥ ÇÃ·¹ÀÌ¾î)
-	std::array<ParentModel, MAX_PLAYER> ghosts_;		// °í½ºÆ® °ø ¸ğµ¨ (»öÀº id¸¶´Ù ´Ù¸£°Ô)
-	std::array<glm::vec3, MAX_PLAYER> ghostPos_{};		// Áö±İ ±×¸± À§Ä¡
-	std::array<bool, MAX_PLAYER> ghostActive_{};		// trueÀÎ Ä­¸¸ ±×¸²
+	// ê³ ìŠ¤íŠ¸ (ë‹¤ë¥¸ í”Œë ˆì´ì–´)
+	std::array<ParentModel, MAX_PLAYER> ghosts_;		// ê³ ìŠ¤íŠ¸ ê³µ ëª¨ë¸ (ìƒ‰ì€ idë§ˆë‹¤ ë‹¤ë¥´ê²Œ)
+	std::array<glm::vec3, MAX_PLAYER> ghostTarget_{};	// ì„œë²„ê°€ ì•Œë ¤ì¤€ ìµœì‹  ìœ„ì¹˜ (ë³´ê°„ ëª©í‘œ)
+	std::array<glm::vec3, MAX_PLAYER> ghostPos_{};		// ì§€ê¸ˆ ê·¸ë¦´ ìœ„ì¹˜
+	std::array<bool, MAX_PLAYER> ghostActive_{};		// trueì¸ ì¹¸ë§Œ ê·¸ë¦¼
 
 	std::vector<BLOCK*> blocks_;
 	std::vector<BOUNCE_BLOCK*> bounceBlocks_;
@@ -92,12 +93,12 @@ private:
 	GLuint titleTextureID_;
 	GLuint endingTextureID_;
 
-	// º° °³¼ö ÃßÀû
+	// ë³„ ê°œìˆ˜ ì¶”ì 
 	int collectedStars_;
-	int playerStarCount_[MAX_PLAYER]{}; // ÇÃ·¹ÀÌ¾î º° °³¼ö ÃßÀû
+	int playerStarCount_[MAX_PLAYER]{}; // í”Œë ˆì´ì–´ ë³„ ê°œìˆ˜ ì¶”ì 
 	int totalStars_;
 
-	// ¼¼ÀÌºê Æ÷ÀÎÆ®
+	// ì„¸ì´ë¸Œ í¬ì¸íŠ¸
 	glm::vec3 spawnPoint_;
 
 	void createFloorBlocks();
