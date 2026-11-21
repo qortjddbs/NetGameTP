@@ -12,6 +12,8 @@ HANDLE g_hStartEvent;
 enum class ServerState { LOBBY, PLAYING, END };
 ServerState g_gameState = ServerState::LOBBY;
 CRITICAL_SECTION g_csGame;
+HANDLE g_hEndEvent;							// 게임 종료 신호
+SOCKET g_listenSock = INVALID_SOCKET;		// LogicThread가 종료 시 닫아서 main의 accept을 깨움
 
 // 한 명에게 전송
 void SendPacket(int id, void* packet, int size)
@@ -619,6 +621,11 @@ DWORD WINAPI LogicThread(LPVOID arg) {
 		Sleep(33);
 	}
 
+	// SendGameEnd();
+	printf("[서버] 게임 종료 -> 접속 받기 중단\n");
+	closesocket(g_listenSock);
+	SetEvent(g_hEndEvent);
+
 	return 0;
 }
 
@@ -635,14 +642,17 @@ int main(int argc, char* argv[])
 	InitializeCriticalSection(&g_csPlayers);
 	InitializeCriticalSection(&g_csGame);
 
-	// 이벤트 초기화 (수동리셋, 비신호)
+	// 이벤트 초기화 ( , 수동리셋, 비신호, )
 	g_hStartEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (NULL == g_hStartEvent)
 		return 1;
+	g_hEndEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (NULL == g_hEndEvent)
+		return 1;
 
 	// 소켓 생성
-	SOCKET listen_sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (listen_sock == INVALID_SOCKET) err_quit("socket()");
+	g_listenSock = socket(AF_INET, SOCK_STREAM, 0);
+	if (g_listenSock == INVALID_SOCKET) err_quit("socket()");
 
 	// bind()
 	struct sockaddr_in serveraddr;
@@ -650,11 +660,11 @@ int main(int argc, char* argv[])
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	serveraddr.sin_port = htons(SERVER_PORT);
-	retval = bind(listen_sock, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+	retval = bind(g_listenSock, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
 	if (retval == SOCKET_ERROR) err_quit("bind()");
 
 	// listen()
-	retval = listen(listen_sock, SOMAXCONN);
+	retval = listen(g_listenSock, SOMAXCONN);
 	if (retval == SOCKET_ERROR) err_quit("listen()");
 
 	// 플레이어 각각의 send 임계영역 초기화
@@ -682,10 +692,10 @@ int main(int argc, char* argv[])
 	// accept()
 	while (1) {
 		addrlen = sizeof(clientaddr);
-		client_sock = accept(listen_sock, (struct sockaddr*)&clientaddr, &addrlen);
+		client_sock = accept(g_listenSock, (struct sockaddr*)&clientaddr, &addrlen);
 		if (client_sock == INVALID_SOCKET) {
-			err_display("accept()");
-			continue;
+			// 게임 종료 시 LogicThread가 listen 소켓을 닫으면 여기로 옴
+			break;
 		}
 
 		// 접속한 클라이언트 정보 출력
@@ -713,14 +723,40 @@ int main(int argc, char* argv[])
 		}
 	}
 
+	// 종료 신호 대기
+	WaitForSingleObject(g_hEndEvent, INFINITE);
+
+	// 남은 클라이언트 연결 끊기 -> 각 ProcessClient의 recv가 실패 -> Disconnect -> 쓰레드 종료
+	for (int id = 0; id < MAX_PLAYER; ++id) {
+		EnterCriticalSection(&g_csSend[id]);
+		EnterCriticalSection(&g_csPlayers);
+		SOCKET s = g_players[id].m_sock;
+		bool c = g_players[id].m_connect;
+		LeaveCriticalSection(&g_csPlayers);
+		if (c && s != INVALID_SOCKET) shutdown(s, SD_BOTH);
+		LeaveCriticalSection(&g_csSend[id]);
+	}
+
+	// 클라이언트 스레드가 다 끝날 때까지 최대 3초 대기 (0.1초마다 확인)
+	for (int wait = 0; wait < 30; ++wait) {
+		int alive = 0;
+		EnterCriticalSection(&g_csPlayers);
+		for (int id = 0; id < MAX_PLAYER; ++id) if (g_players[id].m_connect) ++alive;
+		LeaveCriticalSection(&g_csPlayers);
+		if (alive == 0) break;
+		Sleep(100);
+	}
+
+	printf("[서버] 종료\n");
+
 	// 정리
-	// 모든 스레드가 종료된 뒤 잠금 객체를 정리합니다.
+	// 모든 스레드가 종료된 뒤 잠금 객체를 정리
 	for (int id = 0; id < MAX_PLAYER; ++id) {
 		DeleteCriticalSection(&g_csSend[id]);
 	}
-	closesocket(listen_sock);
 	WSACleanup();
 	CloseHandle(g_hStartEvent);
+	CloseHandle(g_hEndEvent);
 	DeleteCriticalSection(&g_csGame);
 	DeleteCriticalSection(&g_csPlayers);
 	return 0;
