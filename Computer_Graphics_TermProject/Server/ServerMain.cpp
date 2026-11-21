@@ -259,6 +259,36 @@ bool CheckItem(int id, int itemId)
 		ITEM_RADIUS_CHECK * ITEM_RADIUS_CHECK;
 }
 
+// 게임 종료 판정: 누군가 별을 다 모았거나 접속 인원이 1명 이하일 때
+void CheckGameEnd()
+{
+	bool endNow = false;	// 이번 호출에서 END로 바꿨는지
+	int connected = 0;
+	bool allStars = false;
+
+	// 락 순서: g_csPlayers -> g_csGame
+	EnterCriticalSection(&g_csPlayers);
+	EnterCriticalSection(&g_csGame);
+
+	if (g_gameState == ServerState::PLAYING) {
+		for (int i = 0; i < MAX_PLAYER; ++i) {
+			if (!g_players[i].m_connect) continue;
+			++connected;
+			if (g_players[i].m_starCount >= STAR_COUNT) allStars = true;
+		}
+
+		if (allStars || connected <= 1) {
+			g_gameState = ServerState::END;
+			endNow = true;
+		}
+	}
+
+	LeaveCriticalSection(&g_csGame);
+	LeaveCriticalSection(&g_csPlayers);
+
+	if (endNow)	printf("[서버] 게임 종료 판정 (별 전부=%d, 접속 인원=%d)\n", allStars, connected);
+}
+
 // 아이템 획득 요청 처리
 void OnItemGet(int id, CS_ITEM_GET_PACKET* packet)
 {
@@ -347,6 +377,8 @@ void OnStarGet(int id, CS_STAR_GET_PACKET* packet)
 	printf("[OnStarGet] id=%d, starId=%d, success=%d, count=%d\n", id, starId, static_cast<int>(result.success), static_cast<int>(result.starCount));
 
 	SendPacketToAll(&result, sizeof(result));
+
+	if (result.success) CheckGameEnd();
 }
 
 // 클라이언트가 보낸 위치를 서버에 저장
@@ -500,7 +532,7 @@ void Disconnect(int id) {
 
 	printf("[%d] 종료\n", id);
 
-	// CheckGameEnd(): 남은 사람이 1명뿐이면 게임 종료 (11월 18일 구현 예정)
+	CheckGameEnd();
 }
 
 // 클라이언트 한 명 전용 쓰레드
