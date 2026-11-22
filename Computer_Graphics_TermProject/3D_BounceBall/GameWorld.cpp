@@ -429,6 +429,11 @@ void GameWorld::reset(bool inputX)
 	player_.radius_ = 0.5f * player_.getScaleFactor();
 	player_.velocity_ = glm::vec3(0.0f, 0.0f, 0.0f);
 
+	// 아이템 효과 초기화
+	for (int i = 0; i < (int)ITEM_TYPE::COUNT; ++i) effectTime_[i] = 0.0f;
+	player_.setNoGravity(false);
+	player_.setMaxSpeed(5.0f);
+
 	createFloorBlocks();
 	createBounceBlocks();
 	createBreakableBlocks();
@@ -460,6 +465,58 @@ void GameWorld::onStarResult(const SC_STAR_RESULT_PACKET& packet)
 	if (id == g_myId) return; // 자신 별 개수는 충돌 시 이미 반영했기 때문에 제외
 
 	playerStarCount_[id] = count; // 다른 플레이어의 별 개수 서버 값으로 갱신
+}
+
+// 아이템 효과 시작: 타이머를 지속 시간으로 맞추고 값 변경
+void GameWorld::startEffect(int type) {
+	if (type < 0 || type >= (int)ITEM_TYPE::COUNT) return;
+
+	effectTime_[type] = ITEM_DURATION[type];
+
+	if (type == (int)ITEM_TYPE::FLYING) {
+		player_.setNoGravity(true);
+	}
+	else if (type == (int)ITEM_TYPE::ENEMY_SLOW) {
+		player_.setMaxSpeed(3.0f);
+	}
+	// ENEMY_BLIND: 바꿀 값 없음. drawUI가 타이머를 보고 화면을 가림
+
+	printf("[Effect] 시작 type=%d (%.1f초)\n", type, ITEM_DURATION[type]);
+}
+
+// 매 프레임 타이머 감소, 0이 되면 원래대로 복구
+void GameWorld::updateEffects(float deltaTime)
+{
+	for (int i = 0; i < (int)ITEM_TYPE::COUNT; ++i) {
+		if (effectTime_[i] <= 0.0f) continue;	// 꺼져 있는 효과
+
+		effectTime_[i] -= deltaTime;
+		if (effectTime_[i] > 0.0f) continue;	// 아직 남음
+
+		// 방금 끝남 -> 복구
+		effectTime_[i] = 0.0f;
+		if (i == (int)ITEM_TYPE::FLYING) {
+			player_.setNoGravity(false);
+		}
+		else if (i == (int)ITEM_TYPE::ENEMY_SLOW) {
+			player_.setMaxSpeed(5.0f);
+		}
+
+		printf("[Effect] 종료 type=%d\n", i);
+	}
+}
+
+// 서버의 SC_ITEM_RESULT 처리: 다른 사람이 해로운 아이템을 먹었으면 나에게 적용
+void GameWorld::onItemResult(const SC_ITEM_RESULT_PACKET& packet)
+{
+	const int id = packet.id;
+	const int type = packet.itemType;
+
+	if (id == g_myId) return;		// 내가 먹은 건 충돌할 때 이미 처리함
+
+	if (type == (int)ITEM_TYPE::ENEMY_BLIND || type == (int)ITEM_TYPE::ENEMY_SLOW) {
+		startEffect(type);
+	}
 }
 
 void GameWorld::update(float deltaTime)
@@ -496,6 +553,7 @@ void GameWorld::update(float deltaTime)
 	if (!gameStarted_) {
 		return;
 	}
+	updateEffects(deltaTime);
 	if (activateGravity_) {
 		player_.update(deltaTime);
 	}
@@ -610,6 +668,24 @@ void GameWorld::drawUI()
 	// 별 개수 표시 (왼쪽 위)
 	float windowWidth = (float)glutGet(GLUT_WINDOW_WIDTH);
 	float windowHeight = (float)glutGet(GLUT_WINDOW_HEIGHT);
+
+	// ENEMY_BLIND 효과: 화면 가운데 원만 보이고 나머지는 검게 가림
+	if (effectTime_[(int)ITEM_TYPE::ENEMY_BLIND] > 0.0f) {
+		float cx = windowWidth / 2.0f;				// 화면 중심
+		float cy = windowHeight / 2.0f;
+		float r = windowHeight * 0.25f;				// 보이는 반 원지름
+		float R = windowWidth + windowHeight;		// 화면을 다 덮을 만큼 큰 바깥 원
+		const int SEG = 64;							// 원을 64조각으로 나눔
+
+		glColor3f(0.0f, 0.0f, 0.0f);
+		glBegin(GL_TRIANGLE_STRIP);
+		for (int k = 0; k <= SEG; ++k) {						// <= 마지막 점이 처음 점과 이어짐
+			float th = 2.0f * 3.141592f * k / SEG;			
+			glVertex2f(cx + r * cosf(th), cy + r * sinf(th));		// 안쪽 원 위의 점
+			glVertex2f(cx + R * cosf(th), cy + R * sinf(th));		// 바깥 원 위의 점
+		}
+		glEnd();
+	}
 
 	if (gameState_ == GameState::COUNTDOWN) {
 		// 카운트다운 숫자 (화면 중앙, 3 → 2 → 1)
@@ -770,7 +846,10 @@ void GameWorld::checkCollisions()
 					item->sent_ = true;
 				}
 
-				// startEffect(item->m_type);	다음 단계
+				if (item->m_type == (int)ITEM_TYPE::FLYING) {
+					startEffect(item->m_type);			// 이로운 아이템만 나에게 적용
+				}
+				
 
 				delete item;
 				it = items_.erase(it);
@@ -1258,8 +1337,7 @@ void GameWorld::processNetEvents()
 			std::cout << "[EVENT] star result" << std::endl;
 			break;
 		case SC_ITEM_RESULT:
-			// onItemResult((SC_ITEM_RESULT_PACKET*)ev.data);
-			std::cout << "[EVENT] item result" << std::endl;
+			onItemResult(*(SC_ITEM_RESULT_PACKET*)ev.data);
 			break;
 		case SC_GAME_END:
 			// 순위 저장 -> ENDING 전환

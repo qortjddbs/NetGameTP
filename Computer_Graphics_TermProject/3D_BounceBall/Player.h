@@ -1,53 +1,56 @@
-#pragma once
+ï»¿#pragma once
 #include "ParentModel.h"
 
 class PLAYER : public ParentModel
 {
 public:
 	glm::vec3 velocity_ = glm::vec3(0.0f, 0.0f, 0.0f);
-	float radius_ = 0.5f;  // ±¸Ã¼ ¹İÁö¸§
+	float radius_ = 0.5f;  // êµ¬ì²´ ë°˜ì§€ë¦„
 
-	Shape getShape() const override {		 // ¸ğ¾ç °ÔÅÍ
+	Shape getShape() const override {		 // ëª¨ì–‘ ê²Œí„°
 		return Shape::SPHERE;
 	}
 
-	float getRadius() const override {		 // ¹İÁö¸§ °ÔÅÍ
+	float getRadius() const override {		 // ë°˜ì§€ë¦„ ê²Œí„°
 		return radius_;
 	}
 
-	float getSpeed() const {				 // ¼Óµµ °ÔÅÍ
+	float getSpeed() const {				 // ì†ë„ ê²Œí„°
 		return speed_;
 	}
 
-	float getScaleFactor() const {			 // ½ºÄÉÀÏ ÆÑÅÍ °ÔÅÍ
+	float getScaleFactor() const {			 // ìŠ¤ì¼€ì¼ íŒ©í„° ê²Œí„°
 		return scaleFactor_;
 	}
-	glm::vec3 getEyePosition() const {    // Ä«¸Ş¶ó ½ÃÁ¡ À§Ä¡ °è»ê±â
+	glm::vec3 getEyePosition() const {    // ì¹´ë©”ë¼ ì‹œì  ìœ„ì¹˜ ê³„ì‚°ê¸°
 		return translation_ + glm::vec3(0.0f, radius_, 0.0f);
 	}
 
-	void setVelocity(const glm::vec3& vel) { // ¼Óµµ ¼¼ÅÍ
+	void setVelocity(const glm::vec3& vel) { // ì†ë„ ì„¸í„°
 		velocity_ = vel;
 	}
 
-	// È­»ìÇ¥ ¸ğµå »óÅÂ
+	// í™”ì‚´í‘œ ëª¨ë“œ ìƒíƒœ
 	bool isInArrowMode() const { return isFlying_; }
-	void exitArrowMode() { isFlying_ = false; }	// WASD ÀÔ·Â ½Ã È£Ãâ
+	void exitArrowMode() { isFlying_ = false; }	// WASD ì…ë ¥ ì‹œ í˜¸ì¶œ
+
+	void setNoGravity(bool on) { noGravity_ = on; if (on) velocity_.y = 0.0f; }
+	void setMaxSpeed(float s) { maxSpeed_ = s; }
 
 	void update(float deltaTime);
 	void move(const glm::vec3& forward, const glm::vec3& right, int direction, float speed);
 	
-	void moveDebug(int direction);					 // µğ¹ö±×¿ë ÀÌµ¿
-	void moveForward()  { translation_.z -= 0.1f; }; // µğ¹ö±×¿ë ÀüÁø
-	void moveBackward() { translation_.z += 0.1f; }; // µğ¹ö±×¿ë ÈÄÁø
-	void moveLeft()		{ translation_.x -= 0.1f; }; // µğ¹ö±×¿ë ÁÂÃø ÀÌµ¿
-	void moveRight()    { translation_.x += 0.1f; }; // µğ¹ö±×¿ë ¿ìÃø ÀÌµ¿
-	void moveUp()		{ translation_.y += 0.1f; }; // µğ¹ö±×¿ë »óÇâ ÀÌµ¿
-	void moveDown()		{ translation_.y -= 0.1f; }; // µğ¹ö±×¿ë ÇÏÇâ ÀÌµ¿
+	void moveDebug(int direction);					 // ë””ë²„ê·¸ìš© ì´ë™
+	void moveForward()  { translation_.z -= 0.1f; }; // ë””ë²„ê·¸ìš© ì „ì§„
+	void moveBackward() { translation_.z += 0.1f; }; // ë””ë²„ê·¸ìš© í›„ì§„
+	void moveLeft()		{ translation_.x -= 0.1f; }; // ë””ë²„ê·¸ìš© ì¢Œì¸¡ ì´ë™
+	void moveRight()    { translation_.x += 0.1f; }; // ë””ë²„ê·¸ìš© ìš°ì¸¡ ì´ë™
+	void moveUp()		{ translation_.y += 0.1f; }; // ë””ë²„ê·¸ìš© ìƒí–¥ ì´ë™
+	void moveDown()		{ translation_.y -= 0.1f; }; // ë””ë²„ê·¸ìš© í•˜í–¥ ì´ë™
 
-	void Deceleration(float deltaTime);  // ÀÔ·Â ¾øÀ» ¶§ °¨¼Ó
+	void Deceleration(float deltaTime);  // ì…ë ¥ ì—†ì„ ë•Œ ê°ì†
 
-	// Ãæµ¹ Ã³¸®
+	// ì¶©ëŒ ì²˜ë¦¬
 	void onCollision(ParentModel* other) override;
 	void reset() override;
 
@@ -57,13 +60,14 @@ public:
 
 private:
 	float speed_ = 1.0f;
-	float scaleFactor_ = 0.5f;						// ±¸Ã¼ Å©±â Á¶Àı
-	float maxSpeed_ = 5.0f;							// ÃÖ´ë ¼Óµµ
-	float acceleration_ = 6.0f;						// °¡¼Óµµ
-	float deceleration_ = 6.0f;						// °¨¼Óµµ
-	// glm::vec3 inputDirection_ = glm::vec3(0.0f);	// ÇöÀç ÀÔ·Â ¹æÇâ
+	float scaleFactor_ = 0.5f;						// êµ¬ì²´ í¬ê¸° ì¡°ì ˆ
+	float maxSpeed_ = 5.0f;							// ìµœëŒ€ ì†ë„
+	float acceleration_ = 6.0f;						// ê°€ì†ë„
+	float deceleration_ = 6.0f;						// ê°ì†ë„
+	// glm::vec3 inputDirection_ = glm::vec3(0.0f);	// í˜„ì¬ ì…ë ¥ ë°©í–¥
 
-	bool isFlying_ = false;		// È­»ìÇ¥ ¸ğµå »óÅÂ
+	bool isFlying_ = false;		// í™”ì‚´í‘œ ëª¨ë“œ ìƒíƒœ
+	bool noGravity_ = false;	// FLYING ì•„ì´í…œ
 
 	void handleNormalBlockCollision(ParentModel* block);
 	void handleBounceBlockCollision(ParentModel* block);

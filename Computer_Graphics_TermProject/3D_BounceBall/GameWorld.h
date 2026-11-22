@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Protocol.h"
+#include "MapData.h"
 #include "Headers.h"
 #include "Player.h"
 #include "Block.h"
@@ -30,6 +31,10 @@ public:
 	void drawUI();  // UI 그리기 추가
 	void checkCollisions();
 	void onStarResult(const SC_STAR_RESULT_PACKET& packet);
+
+	void onItemResult(const SC_ITEM_RESULT_PACKET& packet);
+	void startEffect(int type);
+	void updateEffects(float deltaTime);
 
 	PLAYER* getPlayer() { return &player_; }
 
@@ -83,6 +88,8 @@ private:
 	std::vector<ARROW_BLOCK*> arrowBlocks_;
 	std::vector<STAR*> stars_;
 	std::vector<ITEM*> items_;
+
+	float effectTime_[(int)ITEM_TYPE::COUNT] = {};		// 효과별 남은 시간(초), 0 = 꺼짐
 
 	GameState gameState_;
 	bool gameStarted_;

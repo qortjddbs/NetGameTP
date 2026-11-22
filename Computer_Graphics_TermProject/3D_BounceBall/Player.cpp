@@ -1,4 +1,4 @@
-#include "Player.h"
+ï»¿#include "Player.h"
 #include "Block.h"
 
 void PLAYER::update(float deltaTime) {
@@ -6,8 +6,11 @@ void PLAYER::update(float deltaTime) {
 	translation_.y += velocity_.y * deltaTime;
 	translation_.z += velocity_.z * deltaTime;
 
-	if (!isFlying_) {
-		velocity_.y -= 9.8f * deltaTime;  // Áß·Â
+	if (noGravity_) {
+		velocity_.y = 0.0f;
+	}
+	else if (!isFlying_) {
+		velocity_.y -= 9.8f * deltaTime;  // ì¤‘ë ¥
 	}
 }
 
@@ -21,31 +24,31 @@ void PLAYER::reset() {
 
 void PLAYER::move(const glm::vec3& forward, const glm::vec3& right, int direction, float speed) {
 	if (isFlying_) {
-		isFlying_ = false; // È­»ìÇ¥ ¸ğµå¿¡¼­´Â ÀÌµ¿ ¹«½Ã
+		isFlying_ = false; // í™”ì‚´í‘œ ëª¨ë“œì—ì„œëŠ” ì´ë™ ë¬´ì‹œ
 	}
 	
 	glm::vec3 movement(0.0f);
-	// Ä«¸Ş¶ó Á¤¸é ¹æÇâ = Á¤¸é
+	// ì¹´ë©”ë¼ ì •ë©´ ë°©í–¥ = ì •ë©´
 
 	switch (direction) {
-	case 0: // Àü¹æ (W)
+	case 0: // ì „ë°© (W)
 		movement = forward * speed;
 		break;
-	case 1: // ÁÂÃø (A)
+	case 1: // ì¢Œì¸¡ (A)
 		movement = -right * speed;
 		break;
-	case 2: // ÈÄ¹æ (S)
+	case 2: // í›„ë°© (S)
 		movement = -forward * speed;
 		break;
-	case 3: // ¿ìÃø (D)
+	case 3: // ìš°ì¸¡ (D)
 		movement = right * speed;
 		break;
 	}
 
-	// ¼öÆò ÀÌµ¿
+	// ìˆ˜í‰ ì´ë™
 	glm::vec3 Velocity = glm::vec3(velocity_.x, 0.0f, velocity_.z) + glm::vec3(movement.x, 0.0f, movement.z);
 
-	// ÃÖ´ë ¼Óµµ Á¦ÇÑ
+	// ìµœëŒ€ ì†ë„ ì œí•œ
 	float horizontalSpeed = glm::length(glm::vec2(Velocity.x, Velocity.z));
 	if (horizontalSpeed > maxSpeed_) {
 		glm::vec2 normalized = glm::normalize(glm::vec2(Velocity.x, Velocity.z));
@@ -53,32 +56,32 @@ void PLAYER::move(const glm::vec3& forward, const glm::vec3& right, int directio
 		Velocity.z = normalized.y * maxSpeed_;
 	}
 
-	// °¡¼Óµµ Àû¿ë
+	// ê°€ì†ë„ ì ìš©
 	velocity_.x = glm::mix(velocity_.x, Velocity.x, acceleration_ * 0.016f);
 	velocity_.z = glm::mix(velocity_.z, Velocity.z, acceleration_ * 0.016f);
 }
 
 void PLAYER::moveDebug(int direction) {
-	// µğ¹ö±×¿ë ÀÌµ¿ ÇÔ¼ö (ÇÊ¿ä½Ã ±¸Çö)
+	// ë””ë²„ê·¸ìš© ì´ë™ í•¨ìˆ˜ (í•„ìš”ì‹œ êµ¬í˜„)
 	glm::vec3 movement(0.0f);
 
 	switch (direction) {
-	case 0: // Àü¹æ (W)
+	case 0: // ì „ë°© (W)
 		moveForward();
 		break;
-	case 1: // ÁÂÃø (A)
+	case 1: // ì¢Œì¸¡ (A)
 		moveLeft();
 		break;
-	case 2: // ÈÄ¹æ (S)
+	case 2: // í›„ë°© (S)
 		moveBackward();
 		break;
-	case 3: // ¿ìÃø (D)
+	case 3: // ìš°ì¸¡ (D)
 		moveRight();
 		break;
-	case 4: // »óÇâ (Q)
+	case 4: // ìƒí–¥ (Q)
 		moveUp();
 		break;
-	case 5: // ÇÏÇâ (E)
+	case 5: // í•˜í–¥ (E)
 		moveDown();
 		break;
 	}
@@ -86,10 +89,10 @@ void PLAYER::moveDebug(int direction) {
 
 void PLAYER::Deceleration(float deltaTime) {
 	if (isFlying_) {
-		return; // È­»ìÇ¥ ¸ğµå¿¡¼­´Â °¨¼Ó ¹«½Ã (µî¼Ó ¿îµ¿)
+		return; // í™”ì‚´í‘œ ëª¨ë“œì—ì„œëŠ” ê°ì† ë¬´ì‹œ (ë“±ì† ìš´ë™)
 	}
 
-	// ÀÔ·ÂÀÌ ¾øÀ» ¶§ ¼Óµµ °¨¼Ò
+	// ì…ë ¥ì´ ì—†ì„ ë•Œ ì†ë„ ê°ì†Œ
 	if( glm::length(glm::vec2(velocity_.x, velocity_.z)) < 0.01f) {
 		velocity_.x = 0.0f;
 		velocity_.z = 0.0f;
@@ -134,39 +137,39 @@ void PLAYER::handleNormalBlockCollision(ParentModel* block) {
 	glm::vec3 blockScale = block->getScale();
 	glm::vec3 playerPos = getPosition();
 
-	// AABBÀÇ ÃÖ¼Ò/ÃÖ´ë Á¡
+	// AABBì˜ ìµœì†Œ/ìµœëŒ€ ì 
 	glm::vec3 blockMin = blockPos - blockScale * 0.5f;
 	glm::vec3 blockMax = blockPos + blockScale * 0.5f;
 
-	// °¡Àå °¡±î¿î Á¡ Ã£±â
+	// ê°€ì¥ ê°€ê¹Œìš´ ì  ì°¾ê¸°
 	glm::vec3 closestPoint = glm::clamp(playerPos, blockMin, blockMax);
 	glm::vec3 diff = playerPos - closestPoint;
 
-	// Ãæµ¹ ¹ı¼± ¹æÇâ °è»ê
+	// ì¶©ëŒ ë²•ì„  ë°©í–¥ ê³„ì‚°
 	if (glm::length(diff) > 0.001f) {
 		glm::vec3 normal = glm::normalize(diff);
 
-		// ¹ı¼± ¹æÇâÀ¸·Î ¼Óµµ ¹İ»ç
+		// ë²•ì„  ë°©í–¥ìœ¼ë¡œ ì†ë„ ë°˜ì‚¬
 		if (abs(normal.y) > 0.5f) {
-			velocity_.y = -velocity_.y * 0.8f;  // YÃà
+			velocity_.y = -velocity_.y * 0.8f;  // Yì¶•
 
-			// ºí·° À§¿¡ ¿Ã·Á³õ±â
+			// ë¸”ëŸ­ ìœ„ì— ì˜¬ë ¤ë†“ê¸°
 			if (normal.y > 0) {
 				translation_.y = blockMax.y + radius_;
 			}
 		}
 		else if (abs(normal.x) > abs(normal.z)) {
-			velocity_.x = -velocity_.x * 0.5f;  // XÃà
+			velocity_.x = -velocity_.x * 0.5f;  // Xì¶•
 		}
 		else {
-			velocity_.z = -velocity_.z * 0.5f;  // ZÃà
+			velocity_.z = -velocity_.z * 0.5f;  // Zì¶•
 		}
 	}
 }
 
 void PLAYER::handleBounceBlockCollision(ParentModel* block) {
 	// velocity_.y = abs(velocity_.y) * 1.0f;
-	velocity_.y = 7.0f; // °íÁ¤µÈ ³ôÀÌ·Î Á¡ÇÁ
+	velocity_.y = 7.0f; // ê³ ì •ëœ ë†’ì´ë¡œ ì í”„
 }
 
 void PLAYER::handleBreakableBlockCollision(ParentModel* block) {
@@ -187,19 +190,19 @@ void PLAYER::handleArrowBlockCollision(ParentModel* block) {
 	glm::vec3 blockScale = block->getScale();
 	glm::vec3 playerPos = getPosition();
 
-	// ºí·ÏÀÇ À­¸é(top face)°úÀÇ Ãæµ¹ °¨Áö
+	// ë¸”ë¡ì˜ ìœ—ë©´(top face)ê³¼ì˜ ì¶©ëŒ ê°ì§€
 	float blockTopY = blockPos.y + blockScale.y * 0.5f;
 
-	// ÇÃ·¹ÀÌ¾î°¡ ºí·Ï À­¸é ±ÙÃ³¿¡ ÀÖ°í, ¾Æ·¡·Î ÀÌµ¿ ÁßÀÏ ¶§¸¸ ¹ßµ¿
+	// í”Œë ˆì´ì–´ê°€ ë¸”ë¡ ìœ—ë©´ ê·¼ì²˜ì— ìˆê³ , ì•„ë˜ë¡œ ì´ë™ ì¤‘ì¼ ë•Œë§Œ ë°œë™
 	if (abs(playerPos.y - blockTopY) < radius_ + 0.1f && velocity_.y <= 0.0f) {
-		// È­»ìÇ¥ ¹æÇâÀ¸·Î µî¼Ó ¿îµ¿ ½ÃÀÛ
+		// í™”ì‚´í‘œ ë°©í–¥ìœ¼ë¡œ ë“±ì† ìš´ë™ ì‹œì‘
 		glm::vec3 launchVelocity = arrowBlock->getArrowDirection() * arrowBlock->getLaunchSpeed();
 		velocity_ = launchVelocity;
 
-		// È­»ìÇ¥ ¸ğµå È°¼ºÈ­ (Áß·Â ¿µÇâ Á¦°Å)
+		// í™”ì‚´í‘œ ëª¨ë“œ í™œì„±í™” (ì¤‘ë ¥ ì˜í–¥ ì œê±°)
 		isFlying_ = true;
 
-		// ºí·Ï À§·Î »ìÂ¦ ¿Ã¸®±â (ºí·Ï¿¡ ³¢Áö ¾Êµµ·Ï)
+		// ë¸”ë¡ ìœ„ë¡œ ì‚´ì§ ì˜¬ë¦¬ê¸° (ë¸”ë¡ì— ë¼ì§€ ì•Šë„ë¡)
 		translation_.y = blockTopY + radius_ + 0.05f;
 
 		std::cout << "Arrow Block activated! Flying in direction: ("
@@ -208,5 +211,5 @@ void PLAYER::handleArrowBlockCollision(ParentModel* block) {
 }
 
 void PLAYER::handleStarCollision(ParentModel* star) {
-	// º° ÇÏ°í ¸¸³µÀ» ¶§ °øÇÑÅ× ÇÒ ¹°¸®ÀûÀÎ Ã³¸®µé (Áö±İÀº ¾øÀ½)
+	// ë³„ í•˜ê³  ë§Œë‚¬ì„ ë•Œ ê³µí•œí…Œ í•  ë¬¼ë¦¬ì ì¸ ì²˜ë¦¬ë“¤ (ì§€ê¸ˆì€ ì—†ìŒ)
 }
