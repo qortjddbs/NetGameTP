@@ -3,6 +3,7 @@
 #include "ServerData.h"
 #include "MapData.h"
 #include <cmath>
+#include <algorithm>
 
 Player g_players[MAX_PLAYER];
 CRITICAL_SECTION g_csPlayers;
@@ -289,6 +290,46 @@ void CheckGameEnd()
 	LeaveCriticalSection(&g_csPlayers);
 
 	if (endNow)	printf("[서버] 게임 종료 판정 (별 전부=%d, 접속 인원=%d)\n", allStars, connected);
+}
+
+// 순위 정렬 후 SC_GAME_END 전원 전송
+void SendGameEnd()
+{
+	struct Entry { char id; unsigned char stars; DWORD lastTime; };
+	Entry list[MAX_PLAYER];
+	int count = 0;
+
+	// 락 안에서는 접속 중인 사람 정보 복사만
+	EnterCriticalSection(&g_csPlayers);
+	for (int i = 0; i < MAX_PLAYER; ++i) {
+		if (!g_players[i].m_connect) continue;
+		list[count].id = (char)i;
+		list[count].stars = g_players[i].m_starCount;
+		list[count].lastTime = g_players[i].m_lastStarTime;
+		++count;
+	}
+	LeaveCriticalSection(&g_csPlayers);
+
+	// 락 밖에서 정렬
+	std::sort(list, list + count, [](const Entry& a, const Entry& b) {
+		if (a.stars != b.stars) return a.stars > b.stars;
+		return a.lastTime < b.lastTime;
+		});
+
+	// 패킷 채운 후 전체 전송
+	SC_GAME_END_PACKET p{};
+	p.size = sizeof(p);
+	p.type = SC_GAME_END;
+	p.count = (char)count;
+	for (int i = 0; i < count; ++i) {
+		p.rank[i].id = list[i].id;
+		p.rank[i].starCount = (char)list[i].stars;
+	}
+	SendPacketToAll(&p, sizeof(p));
+
+	printf("[서버] 순위:");
+	for (int i = 0; i < count; ++i) printf(" %d위 id%d(별 %d)", i + 1, list[i].id, list[i].stars);
+	printf("\n");
 }
 
 // 아이템 획득 요청 처리
@@ -621,7 +662,7 @@ DWORD WINAPI LogicThread(LPVOID arg) {
 		Sleep(33);
 	}
 
-	// SendGameEnd();
+	SendGameEnd();
 	printf("[서버] 게임 종료 -> 접속 받기 중단\n");
 	closesocket(g_listenSock);
 	SetEvent(g_hEndEvent);
