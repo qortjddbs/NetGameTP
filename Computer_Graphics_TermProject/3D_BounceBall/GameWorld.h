@@ -82,6 +82,7 @@ private:
 	std::vector<SPIKE_BLOCK*> spikeBlocks_;
 	std::vector<ARROW_BLOCK*> arrowBlocks_;
 	std::vector<STAR*> stars_;
+	std::vector<ITEM*> items_;
 
 	GameState gameState_;
 	bool gameStarted_;
@@ -107,6 +108,7 @@ private:
 	void createSpikeBlocks();
 	void createArrowBlocks();
 	void createStars();
+	void createItems();
 
 	bool loadTitleTexture(const char* filepath);
 	bool loadEndingTexture(const char* filepath);

@@ -384,6 +384,7 @@ void GameWorld::initialize()
 	createSpikeBlocks();      // 가시 장애물
 	createArrowBlocks();     // 화살표 블럭
 	createStars();            // 별 배치
+	createItems();
 
 	// 총 별 개수 설정
 	totalStars_ = stars_.size();
@@ -403,6 +404,7 @@ void GameWorld::cleanup()
 	for (auto block : spikeBlocks_) delete block;
 	for (auto block : arrowBlocks_) delete block;
 	for (auto star : stars_) delete star;
+	for (auto item : items_) delete item;
 
 	blocks_.clear();
 	bounceBlocks_.clear();
@@ -410,6 +412,7 @@ void GameWorld::cleanup()
 	spikeBlocks_.clear();
 	arrowBlocks_.clear();
 	stars_.clear();
+	items_.clear();
 }
 
 void GameWorld::reset(bool inputX)
@@ -432,6 +435,7 @@ void GameWorld::reset(bool inputX)
 	createSpikeBlocks();
 	createArrowBlocks();
 	createStars();
+	createItems();
 
 	score_ = 0;
 	collectedStars_ = 0;  // 별 개수 초기화
@@ -576,6 +580,7 @@ void GameWorld::draw()
 	for (auto block : spikeBlocks_) block->draw();
 	for (auto block : arrowBlocks_) block->draw();
 	for (auto star : stars_) star->draw();
+	for (auto item : items_) item->draw();
 
 	drawGhosts();	// 고스트 그리기
 	drawUI();		// UI 그리기
@@ -750,6 +755,30 @@ void GameWorld::checkCollisions()
 		}
 		++it;
 	}
+
+	// 아이템 획득
+	for (auto it = items_.begin(); it != items_.end(); ) {
+		ITEM* item = *it;
+		if (player_.checkCollision(item)) {
+			player_.onCollision(item);
+			item->onCollision(&player_);
+
+			if (item->isCollected_) {
+
+				if (!item->sent_ && g_sock != INVALID_SOCKET) {
+					SendItemGet(item->m_id);
+					item->sent_ = true;
+				}
+
+				// startEffect(item->m_type);	다음 단계
+
+				delete item;
+				it = items_.erase(it);
+				continue;
+			}
+		}
+		++it;
+	}
 }
 
 void GameWorld::addBlock(BLOCK* block) { blocks_.push_back(block); }
@@ -762,8 +791,6 @@ void GameWorld::addStar(STAR* star) { stars_.push_back(star); }
 // ==========================================
 //              레벨 디자인 구현
 // ==========================================
-
-//
 
 void GameWorld::createFloorBlocks()
 {
@@ -1109,6 +1136,28 @@ void GameWorld::createStars()
 	//star8->setTranslation(glm::vec3(0.0f, 17.0f, -143.0f));
 	//star8->setSelfScale(glm::vec3(0.2f, 0.4f, 0.2f)); // 큰 별
 	//stars_.push_back(star8);
+}
+
+void GameWorld::createItems()
+{
+	const std::array<glm::vec3, (int)ITEM_TYPE::COUNT> colors = {
+		glm::vec3(0.3f, 0.8f, 1.0f),		// FLYING		: 하늘색 (나에게 이로움)
+		glm::vec3(0.6f, 0.2f, 0.8f),		// ENEMY_BLIND	: 보라 (상대 시야 방해)
+		glm::vec3(1.0f, 0.5f, 0.0f)			// ENEMY_SLOW	: 주황 (상대 감속)
+	};
+
+	for (int i = 0; i < ITEM_COUNT; ++i) {
+		const ItemData& data = ITEM_LIST[i];
+		const glm::vec3& c = colors[(int)data.type];
+
+		ITEM* item = new ITEM();
+		item->init("obj/uv_cube.obj", shaderProgramID_, c.r, c.g, c.b);
+		item->setTranslation(glm::vec3(data.x, data.y, data.z));
+		item->setSelfScale(glm::vec3(0.4f, 0.4f, 0.4f));
+		item->m_id = i;
+		item->m_type = (int)data.type;
+		items_.push_back(item);
+	}
 }
 
 void GameWorld::initGhosts()

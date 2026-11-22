@@ -1,17 +1,18 @@
-#pragma once
+ï»¿#pragma once
 #include "Headers.h"
 #include "Vertex.h"
 #include "ObjModel.h"
 
-// Ãæµ¹ Å¸ÀÔ
+// ì¶©ëŒ íƒ€ì…
 enum class CollisionType {
 	NONE,
-	NORMAL_BLOCK,    // ÀÏ¹İ ºí·°
-	BOUNCE_BLOCK,    // Æ¨±â´Â ºí·°
-	BREAKABLE_BLOCK, // ºÎ¼­Áö´Â ºí·°
-	SPIKE_BLOCK,      // °¡½Ã ºí·°
-	ARROW_BLOCK,   // È­»ìÇ¥ ºí·°
-	STAR			// º°
+	NORMAL_BLOCK,    // ì¼ë°˜ ë¸”ëŸ­
+	BOUNCE_BLOCK,    // íŠ•ê¸°ëŠ” ë¸”ëŸ­
+	BREAKABLE_BLOCK, // ë¶€ì„œì§€ëŠ” ë¸”ëŸ­
+	SPIKE_BLOCK,      // ê°€ì‹œ ë¸”ëŸ­
+	ARROW_BLOCK,   // í™”ì‚´í‘œ ë¸”ëŸ­
+	STAR,			// ë³„
+	ITEM			// ì•„ì´í…œ
 };
 
 enum class Shape {
@@ -28,23 +29,23 @@ public:
 	void draw();
 	virtual void reset();
 
-	// ¹Ù¿îµù Á¤º¸
+	// ë°”ìš´ë”© ì •ë³´
 	virtual glm::vec3 getPosition() const { return translation_; }
 	virtual glm::vec3 getScale() const { return selfscale_ * scale_; }
 
-	// Ãæµ¹ ÇüÅÂ ¹İÈ¯ (ÀÚ½Ä Å¬·¡½º¿¡¼­ ¿À¹ö¶óÀÌµå)
+	// ì¶©ëŒ í˜•íƒœ ë°˜í™˜ (ìì‹ í´ë˜ìŠ¤ì—ì„œ ì˜¤ë²„ë¼ì´ë“œ)
 	virtual Shape getShape() const { return Shape::AABB; }
 
-	// ±¸Ã¼ ¹İÁö¸§ (Sphere Å¸ÀÔÀÏ °æ¿ì)
+	// êµ¬ì²´ ë°˜ì§€ë¦„ (Sphere íƒ€ì…ì¼ ê²½ìš°)
 	virtual float getRadius() const { return 0.5f; }
 
-	// Ãæµ¹ °Ë»ç
+	// ì¶©ëŒ ê²€ì‚¬
 	bool checkCollision(const ParentModel* other) const;
 
-	// Ãæµ¹ ½Ã È£ÃâµÇ´Â °¡»ó ÇÔ¼ö (ÀÚ½Ä Å¬·¡½º¿¡¼­ ¿À¹ö¶óÀÌµå)
+	// ì¶©ëŒ ì‹œ í˜¸ì¶œë˜ëŠ” ê°€ìƒ í•¨ìˆ˜ (ìì‹ í´ë˜ìŠ¤ì—ì„œ ì˜¤ë²„ë¼ì´ë“œ)
 	virtual void onCollision(ParentModel* other) {}
 
-	// Ãæµ¹ Å¸ÀÔ ¹İÈ¯ (ÀÚ½Ä Å¬·¡½º¿¡¼­ ¿À¹ö¶óÀÌµå)
+	// ì¶©ëŒ íƒ€ì… ë°˜í™˜ (ìì‹ í´ë˜ìŠ¤ì—ì„œ ì˜¤ë²„ë¼ì´ë“œ)
 	virtual CollisionType getCollisionType() const { return CollisionType::NONE; }
 
 	// Getter
@@ -61,18 +62,18 @@ public:
 	void setSelfScale(const glm::vec3& s) { selfscale_ = s; }
 	void setGlobalScale(const glm::vec3& s) { scale_ = s; }
 
-	// ÆíÀÇ
+	// í¸ì˜
 	void translate(const glm::vec3& offset) { translation_ += offset; }
 	void rotate(const glm::vec3& rot) { rotation_ += rot; }
 	void scaleBy(const glm::vec3& factor) { selfscale_ *= factor; }
 
 protected:
 	OBJ_MODEL m_;
-	glm::vec3 translation_ = glm::vec3(0.0f, 0.0f, 0.0f);    // ÀÌµ¿
-	glm::vec3 rotation_ = glm::vec3(0.0f, 0.0f, 0.0f);		// ÀÚÀü
-	glm::vec3 orbitRotation_ = glm::vec3(0.0f, 0.0f, 0.0f);  // °øÀü
-	glm::vec3 selfscale_ = glm::vec3(1.0f, 1.0f, 1.0f);		// Á¦ÀÚ¸® ½ºÄÉÀÏ
-	glm::vec3 scale_ = glm::vec3(1.0f, 1.0f, 1.0f);			// ¿øÁ¡ ½ºÄÉÀÏ
+	glm::vec3 translation_ = glm::vec3(0.0f, 0.0f, 0.0f);    // ì´ë™
+	glm::vec3 rotation_ = glm::vec3(0.0f, 0.0f, 0.0f);		// ìì „
+	glm::vec3 orbitRotation_ = glm::vec3(0.0f, 0.0f, 0.0f);  // ê³µì „
+	glm::vec3 selfscale_ = glm::vec3(1.0f, 1.0f, 1.0f);		// ì œìë¦¬ ìŠ¤ì¼€ì¼
+	glm::vec3 scale_ = glm::vec3(1.0f, 1.0f, 1.0f);			// ì›ì  ìŠ¤ì¼€ì¼
 
 private:
 	static bool checkSphereAABBCollision(const ParentModel* sphere, const ParentModel* aabb);

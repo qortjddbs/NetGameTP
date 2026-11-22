@@ -1,7 +1,7 @@
-#pragma once
+ï»¿#pragma once
 #include "ParentModel.h"
 
-// ±âº» ºí·° Å¬·¡½º
+// ê¸°ë³¸ ë¸”ëŸ­ í´ë˜ìŠ¤
 class BLOCK : public ParentModel
 {
 public:
@@ -9,14 +9,14 @@ public:
 	void onCollision(ParentModel* other) override;
 };
 
-// Æ¨±â´Â ºí·°
+// íŠ•ê¸°ëŠ” ë¸”ëŸ­
 class BOUNCE_BLOCK : public BLOCK
 {
 public:
 	CollisionType getCollisionType() const override;
 };
 
-// ºÎ¼­Áö´Â ºí·°
+// ë¶€ì„œì§€ëŠ” ë¸”ëŸ­
 class BREAKABLE_BLOCK : public BLOCK
 {
 public:
@@ -24,26 +24,26 @@ public:
 
 	CollisionType getCollisionType() const override;
 	void onCollision(ParentModel* other) override;
-	void reset() override;  // ¸®¼Â ½Ã º¹±¸
+	void reset() override;  // ë¦¬ì…‹ ì‹œ ë³µêµ¬
 };
 
-// °¡½Ã ºí·°
+// ê°€ì‹œ ë¸”ëŸ­
 class SPIKE_BLOCK : public BLOCK
 {
 public:
 	CollisionType getCollisionType() const override;
 };
 
-// È­»ìÇ¥ ºí·Ï
+// í™”ì‚´í‘œ ë¸”ë¡
 class ARROW_BLOCK : public BLOCK
 {
 public:
-	glm::vec3 arrowDirection_ = glm::vec3(0.0f, 0.0f, -1.0f); // È­»ìÇ¥ ¹æÇâ
-	float launchSpeed_ = 10.0f; // ¹ß»ç ¼Óµµ
+	glm::vec3 arrowDirection_ = glm::vec3(0.0f, 0.0f, -1.0f); // í™”ì‚´í‘œ ë°©í–¥
+	float launchSpeed_ = 10.0f; // ë°œì‚¬ ì†ë„
 
 	CollisionType getCollisionType() const override;
 
-	// È­»ìÇ¥ ¹æÇâ ¼³Á¤ (´ÜÀ§ º¤ÅÍ·Î ÀÚµ¿ Á¤±ÔÈ­)
+	// í™”ì‚´í‘œ ë°©í–¥ ì„¤ì • (ë‹¨ìœ„ ë²¡í„°ë¡œ ìë™ ì •ê·œí™”)
 	void setArrowDirection(const glm::vec3& dir) {
 		if (glm::length(dir) > 0.001f) {
 			arrowDirection_ = glm::normalize(dir);
@@ -54,24 +54,47 @@ public:
 	float getLaunchSpeed() const { return launchSpeed_; }
 };
 
-// º°
+// ë³„
 class STAR : public ParentModel
 {
 public:
 	bool isCollected_ = false;
-	bool sent_ = false; // º° È¹µæ ¾Ë¸² Àü¼Û ¿©ºÎ
+	bool sent_ = false; // ë³„ íšë“ ì•Œë¦¼ ì „ì†¡ ì—¬ë¶€
 
 	CollisionType getCollisionType() const override;
 	void onCollision(ParentModel* other) override;
-	void reset() override;  // ¸®¼Â ½Ã º¹±¸
+	void reset() override;  // ë¦¬ì…‹ ì‹œ ë³µêµ¬
 
 	Shape getShape() const override {
-		return Shape::SPHERE;  // ±¸Ã¼·Î Ãæµ¹ Ã³¸®
+		return Shape::SPHERE;  // êµ¬ì²´ë¡œ ì¶©ëŒ ì²˜ë¦¬
 	}
 
 	float getRadius() const override {
-		return 0.6f;  // º° Å©±â¿¡ ¸Â°Ô Á¶Á¤
+		return 0.6f;  // ë³„ í¬ê¸°ì— ë§ê²Œ ì¡°ì •
 	}
 
-	int  m_id;        // Ãß°¡: 0 ~ STAR_COUNT-1
+	int  m_id;        // ì¶”ê°€: 0 ~ STAR_COUNT-1
+};
+
+// ì•„ì´í…œ
+class ITEM : public ParentModel
+{
+public:
+	bool isCollected_ = false;
+	bool sent_ = false; // ì•„ì´í…œ íšë“ ì•Œë¦¼ ì „ì†¡ ì—¬ë¶€
+
+	CollisionType getCollisionType() const override;
+	void onCollision(ParentModel* other) override;
+	void reset() override;  // ë¦¬ì…‹ ì‹œ ë³µêµ¬
+
+	Shape getShape() const override {
+		return Shape::SPHERE;  // êµ¬ì²´ë¡œ ì¶©ëŒ ì²˜ë¦¬
+	}
+
+	float getRadius() const override {
+		return 0.6f;  // ë³„ í¬ê¸°ì— ë§ê²Œ ì¡°ì •
+	}
+
+	int m_id;
+	int m_type;				// 0: ë‚ ê¸°, 1 = ì  í™”ë©´ ê°€ë¦¬ê¸°, 2 = ì  ìŠ¬ë¡œìš°
 };

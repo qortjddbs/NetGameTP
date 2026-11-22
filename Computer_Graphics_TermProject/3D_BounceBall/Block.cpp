@@ -1,11 +1,11 @@
-#include "Block.h"
+ï»¿#include "Block.h"
 
 CollisionType BLOCK::getCollisionType() const {
 	return CollisionType::NORMAL_BLOCK;
 }
 
 void BLOCK::onCollision(ParentModel* other) {
-	// ºí·°Àº Ãæµ¹ ½Ã Æ¯º°ÇÑ Çàµ¿ ¾øÀ½
+	// ë¸”ëŸ­ì€ ì¶©ëŒ ì‹œ íŠ¹ë³„í•œ í–‰ë™ ì—†ìŒ
 }
 
 CollisionType BOUNCE_BLOCK::getCollisionType() const {
@@ -21,8 +21,8 @@ void BREAKABLE_BLOCK::onCollision(ParentModel* other) {
 }
 
 void BREAKABLE_BLOCK::reset() {
-	ParentModel::reset();  // ºÎ¸ğ Å¬·¡½ºÀÇ reset È£Ãâ
-	isBroken_ = false;     // ºÎ¼­Áø »óÅÂ ÃÊ±âÈ­
+	ParentModel::reset();  // ë¶€ëª¨ í´ë˜ìŠ¤ì˜ reset í˜¸ì¶œ
+	isBroken_ = false;     // ë¶€ì„œì§„ ìƒíƒœ ì´ˆê¸°í™”
 }
 
 CollisionType SPIKE_BLOCK::getCollisionType() const {
@@ -34,7 +34,7 @@ CollisionType ARROW_BLOCK::getCollisionType() const {
 }
 
 CollisionType STAR::getCollisionType() const {
-	return CollisionType::STAR;  // »õ·Î¿î Å¸ÀÔ Ãß°¡ ÇÊ¿ä
+	return CollisionType::STAR;  // ìƒˆë¡œìš´ íƒ€ì… ì¶”ê°€ í•„ìš”
 }
 
 void STAR::onCollision(ParentModel* other) {
@@ -42,7 +42,21 @@ void STAR::onCollision(ParentModel* other) {
 }
 
 void STAR::reset() {
-	ParentModel::reset();  // ºÎ¸ğ Å¬·¡½ºÀÇ reset È£Ãâ
-	isCollected_ = false;  // ¼öÁı »óÅÂ ÃÊ±âÈ­
+	ParentModel::reset();  // ë¶€ëª¨ í´ë˜ìŠ¤ì˜ reset í˜¸ì¶œ
+	isCollected_ = false;  // ìˆ˜ì§‘ ìƒíƒœ ì´ˆê¸°í™”
+	sent_ = false;
+}
+
+CollisionType ITEM::getCollisionType() const {
+	return CollisionType::ITEM;
+}
+
+void ITEM::onCollision(ParentModel* other) {
+	isCollected_ = true;
+}
+
+void ITEM::reset() {
+	ParentModel::reset();  // ë¶€ëª¨ í´ë˜ìŠ¤ì˜ reset í˜¸ì¶œ
+	isCollected_ = false;  // ìˆ˜ì§‘ ìƒíƒœ ì´ˆê¸°í™”
 	sent_ = false;
 }
