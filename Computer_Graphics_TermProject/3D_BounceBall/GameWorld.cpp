@@ -1333,7 +1333,7 @@ void GameWorld::processNetEvents()
 
 		switch (ev.type) {
 		case SC_STAR_RESULT:
-			// onStarResult((SC_STAR_RESULT_PACKET*)ev.data);
+			onStarResult(*(SC_STAR_RESULT_PACKET*)ev.data);
 			std::cout << "[EVENT] star result" << std::endl;
 			break;
 		case SC_ITEM_RESULT:
