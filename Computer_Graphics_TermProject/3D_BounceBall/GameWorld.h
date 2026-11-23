@@ -145,4 +145,6 @@ public:
 private:
 	bool  isReady_ = false;
 	float countdownTime_ = 0.0f;
+
+	void onGameEnd(const SC_GAME_END_PACKET& packet);
 };

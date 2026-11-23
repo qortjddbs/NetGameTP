@@ -1436,8 +1436,7 @@ void GameWorld::processNetEvents()
 			onItemResult(*(SC_ITEM_RESULT_PACKET*)ev.data);
 			break;
 		case SC_GAME_END:
-			// 순위 저장 -> ENDING 전환
-			std::cout << "[EVENT] game end" << std::endl;
+			onGameEnd(*(SC_GAME_END_PACKET*)ev.data);
 			break;
 		case SC_LEAVE:
 			// 이탈 고스트 제거
@@ -1446,4 +1445,18 @@ void GameWorld::processNetEvents()
 		}
 		events.pop();
 	}
+}
+
+void GameWorld::onGameEnd(const SC_GAME_END_PACKET& packet)
+{
+	if (gameState_ != GameState::PLAYING)
+		return;
+	if (packet.count > MAX_PLAYER) 
+		return;
+
+	endingRankCount_ = packet.count;
+	for (int i = 0; i < endingRankCount_; ++i)
+		endingRanks_[i] = packet.rank[i];
+
+	gameState_ = GameState::ENDING;
 }
