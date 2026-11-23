@@ -906,7 +906,7 @@ void GameWorld::checkCollisions()
 				addScore(50);
 				collectedStars_++;  // 별 개수 증가
 
-				if (collectedStars_ >= totalStars_) {
+				if (collectedStars_ >= totalStars_ && g_sock == INVALID_SOCKET) {
 					std::cout << "All stars collected! You win!" << std::endl;
 					gameState_ = GameState::ENDING;
 
@@ -1429,15 +1429,79 @@ void GameWorld::processNetEvents()
 
 		switch (ev.type) {
 		case SC_STAR_RESULT:
-			onStarResult(*(SC_STAR_RESULT_PACKET*)ev.data);
+			// onStarResult((SC_STAR_RESULT_PACKET*)ev.data);
 			std::cout << "[EVENT] star result" << std::endl;
 			break;
 		case SC_ITEM_RESULT:
 			onItemResult(*(SC_ITEM_RESULT_PACKET*)ev.data);
 			break;
 		case SC_GAME_END:
-			onGameEnd(*(SC_GAME_END_PACKET*)ev.data);
+		{
+			SC_GAME_END_PACKET packet{};
+			memcpy(&packet, ev.data, sizeof(packet));
+
+			if (packet.type != SC_GAME_END ||
+				packet.size != sizeof(SC_GAME_END_PACKET))
+				break;
+
+			const int count = packet.count;
+
+			// 순위에 포함된 인원 검사
+			if (count <= 0 || count > MAX_PLAYER)
+				break;
+
+			// 순위 데이터 전체를 먼저 검사
+			bool valid = true;
+			bool seen[MAX_PLAYER]{};
+
+			for (int i = 0; i < count; ++i) {
+				const int id = packet.rank[i].id;
+				const int stars = packet.rank[i].starCount;
+
+				if (id < 0 || id >= MAX_PLAYER ||
+					stars < 0 || stars > static_cast<int>(STAR_COUNT)) {
+					valid = false;
+					break;
+				}
+
+				// 같은 플레이어가 두 번 들어간 결과는 무시
+				if (seen[id]) {
+					valid = false;
+					break;
+				}
+
+				seen[id] = true;
+			}
+
+			if (!valid) {
+				printf("[GameEnd] 잘못된 순위 데이터\n");
+				break;
+			}
+
+			// 서버가 정렬한 순서를 그대로 저장
+			for (int i = 0; i < MAX_PLAYER; ++i)
+				endingRanks_[i] = {};
+
+			for (int i = 0; i < count; ++i)
+				endingRanks_[i] = packet.rank[i];
+
+			endingRankCount_ = count;
+
+			// 결과 저장 후 종료 화면으로 전환
+			gameStarted_ = false;
+			gameState_ = GameState::ENDING;
+
+			printf("[GameEnd] 최종 순위 수신: %d명\n", count);
+
+			for (int i = 0; i < count; ++i) {
+				printf("  %d위: id=%d, stars=%d\n",
+					i + 1,
+					static_cast<int>(endingRanks_[i].id),
+					static_cast<int>(endingRanks_[i].starCount));
+			}
+
 			break;
+		}
 		case SC_LEAVE:
 			// 이탈 고스트 제거
 			std::cout << "[EVENT] leave" << std::endl;
@@ -1445,18 +1509,4 @@ void GameWorld::processNetEvents()
 		}
 		events.pop();
 	}
-}
-
-void GameWorld::onGameEnd(const SC_GAME_END_PACKET& packet)
-{
-	if (gameState_ != GameState::PLAYING)
-		return;
-	if (packet.count > MAX_PLAYER) 
-		return;
-
-	endingRankCount_ = packet.count;
-	for (int i = 0; i < endingRankCount_; ++i)
-		endingRanks_[i] = packet.rank[i];
-
-	gameState_ = GameState::ENDING;
 }

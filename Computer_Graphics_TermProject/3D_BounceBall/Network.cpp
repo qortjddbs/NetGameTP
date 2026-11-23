@@ -240,6 +240,7 @@ void ProcessServerPacket(char* buf)
         break;
     }
     case SC_GAME_END: {
+        if (header->size != sizeof(SC_GAME_END_PACKET)) break;
         PushNetEvent(buf);
         break;
     }
