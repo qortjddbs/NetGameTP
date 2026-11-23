@@ -40,6 +40,7 @@ void PopNetEvents(std::queue<NetEvent>& out);   // 메인 스레드: 쌓인 이벤트를 한
 void InitNet();                       // g_csNet 초기화 (main 시작 시 1번 호출)
 
 bool ConnectServer(const char* ip);
+void CloseNet();
 DWORD WINAPI ClientRecvThread(LPVOID arg);
 bool RecvPacket(char* buf);
 void ProcessServerPacket(char* buf);

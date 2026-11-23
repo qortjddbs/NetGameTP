@@ -33,28 +33,62 @@ void InitNet()  // 필요한 초기화 작업이 생기면 여기에 추가
 bool ConnectServer(const char* ip)
 {
     WSADATA wsa;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) return false;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+        printf("WSAStartup failed\n");
+        return false;
+    }
 
     g_sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (g_sock == INVALID_SOCKET) { WSACleanup(); return false; }
+    if (g_sock == INVALID_SOCKET) {
+        printf("socket() failed (%d)\n", WSAGetLastError());
+        WSACleanup();
+        return false;
+    }
 
-    sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
+    sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(SERVER_PORT);
     inet_pton(AF_INET, ip, &addr.sin_addr);
 
     if (connect(g_sock, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
         printf("Failed to connect to server (%d)\n", WSAGetLastError());
-        closesocket(g_sock); g_sock = INVALID_SOCKET;
+        closesocket(g_sock);
+        g_sock = INVALID_SOCKET;
         WSACleanup();
         return false;
     }
     printf("Connected to server: %s:%d\n", ip, SERVER_PORT);
 
+    // 로그인 응답 대기용 이벤트 (자동 리셋)
     g_hLoginEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+
+    // 받기 스레드 시작
     g_hRecvThread = CreateThread(NULL, 0, ClientRecvThread, NULL, 0, NULL);
+    if (g_hRecvThread == NULL) {
+        printf("CreateThread failed\n");
+        CloseNet();
+        return false;
+    }
     return true;
+}
+
+// 접속 정리 (로그인 실패 시 / 종료 시 사용)
+void CloseNet()
+{
+    if (g_sock != INVALID_SOCKET) {
+        closesocket(g_sock);              // 받기 스레드의 recv가 실패하면서 스레드 종료
+        g_sock = INVALID_SOCKET;
+    }
+    if (g_hRecvThread) {
+        WaitForSingleObject(g_hRecvThread, INFINITE);
+        CloseHandle(g_hRecvThread);
+        g_hRecvThread = NULL;
+    }
+    if (g_hLoginEvent) {
+        CloseHandle(g_hLoginEvent);
+        g_hLoginEvent = NULL;
+    }
+    WSACleanup();
 }
 
 // 헤더(2byte) -> 본문 순서로 패킷 1개를 정확히 받음

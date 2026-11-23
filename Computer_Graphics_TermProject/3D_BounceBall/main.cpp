@@ -103,25 +103,33 @@ void main(int argc, char** argv)
 {
 	InitNet();
 
-	char ip[32], name[NAME_LEN];
-	printf("Server IP: ");
-	scanf_s("%31s", ip, (unsigned)sizeof(ip));
+	char name[NAME_LEN] = {};
+	printf("Nickname: ");
+	scanf_s("%15s", name, (unsigned)sizeof(name));
 
-	if (strcmp(ip, "0") != 0) {                       // 온라인 모드, 0을 입력하면 오프라인 모드(서버없이 실행할 수 있음)
-		printf("Nickname: ");
-		scanf_s("%15s", name, (unsigned)sizeof(name));
+	char ip[32] = {};
+	while (true) {
+		printf("Server IP (0: offline): ");
+		scanf_s("%31s", ip, (unsigned)sizeof(ip));
+
+		if (strcmp(ip, "0") == 0) {
+			printf("Offline mode\n");
+			break;
+		}
 
 		if (!ConnectServer(ip)) {
-			return;
+			printf("Check that the server is running and the IP is correct.\n");
+			continue;
 		}
-		SendLogin(name);
 
-		// 서버 응답을 최대 3초 기다림
-		if (WaitForSingleObject(g_hLoginEvent, 3000) != WAIT_OBJECT_0) {
-			printf("login timeout\n");
-			return;
+		SendLogin(name);
+		if (WaitForSingleObject(g_hLoginEvent, 3000) == WAIT_OBJECT_0) {
+			printf("Login OK (id=%d)\n", g_myId);
+			break;
 		}
-		printf("login success (id=%d)\n", g_myId);
+
+		printf("Login timeout (server full or no response)\n");
+		CloseNet();
 	}
 
 
