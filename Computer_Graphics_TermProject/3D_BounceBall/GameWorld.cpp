@@ -307,52 +307,148 @@ void GameWorld::drawTitleScreen()
 
 void GameWorld::drawEndingScreen()
 {
-	if (endingTextureID_ == 0) return;
+	// 닉네임은 공유 데이터이므로 잠금 안에서 복사
+	char names[MAX_PLAYER][NAME_LEN]{};
 
+	EnterCriticalSection(&g_csNet);
+	memcpy(names, g_playerName, sizeof(names));
+	LeaveCriticalSection(&g_csNet);
+
+	// 문자열 끝 보장
+	for (int i = 0; i < MAX_PLAYER; ++i)
+		names[i][NAME_LEN - 1] = '\0';
+
+	// 기존 OpenGL 상태 저장
+	GLint oldProgram = 0;
+	GLint oldMatrixMode = 0;
+
+	glGetIntegerv(GL_CURRENT_PROGRAM, &oldProgram);
+	glGetIntegerv(GL_MATRIX_MODE, &oldMatrixMode);
+
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
 	glUseProgram(0);
+
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_LIGHTING);
+	glDisable(GL_TEXTURE_2D);
 	glDisable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+	// 800 x 600 기준의 2D 화면
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
 	glLoadIdentity();
-	gluOrtho2D(0, glutGet(GLUT_WINDOW_WIDTH), 0, glutGet(GLUT_WINDOW_HEIGHT));
+	gluOrtho2D(0, 800, 0, 600);
 
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 	glLoadIdentity();
 
-	// 전체 화면 꽉 차게 그리기
-	float windowWidth = (float)glutGet(GLUT_WINDOW_WIDTH);
-	float windowHeight = (float)glutGet(GLUT_WINDOW_HEIGHT);
-
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, endingTextureID_); // <--- 엔딩 텍스처 바인딩
-
-	glColor3f(1.0f, 1.0f, 1.0f);
+	// 배경
+	glColor3f(0.08f, 0.10f, 0.16f);
 	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 1.0f); glVertex2f(0.0f, 0.0f);
-	glTexCoord2f(1.0f, 1.0f); glVertex2f(windowWidth, 0.0f);
-	glTexCoord2f(1.0f, 0.0f); glVertex2f(windowWidth, windowHeight);
-	glTexCoord2f(0.0f, 0.0f); glVertex2f(0.0f, windowHeight);
+	glVertex2f(0, 0);
+	glVertex2f(800, 0);
+	glVertex2f(800, 600);
+	glVertex2f(0, 600);
 	glEnd();
 
-	glDisable(GL_TEXTURE_2D);
+	// 문자열 출력
+	auto drawText = [](float x, float y, const char* text) {
+		glRasterPos2f(x, y);
 
-	// 축하 메시지 출력
-	glColor3f(1.0f, 1.0f, 0.0f);
-	glRasterPos2f(windowWidth / 2.0f - 170.0f, 50.0f);
-	std::string text = "2025 Computer Graphics Term Progect!";
-	for (char c : text) {
-		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
+		for (const unsigned char* c =
+			reinterpret_cast<const unsigned char*>(text);
+			*c != '\0'; ++c) {
+			glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
+		}
+		};
+
+	const bool hasResult =
+		endingRankCount_ > 0 &&
+		endingRankCount_ <= MAX_PLAYER;
+
+	// 제목
+	glColor3f(1.0f, 0.85f, 0.25f);
+
+	if (!hasResult) {
+		drawText(100, 510, "GAME RESULT");
+	}
+	else if (g_myId >= 0 &&
+		endingRanks_[0].id == g_myId) {
+		drawText(100, 510, "YOU WIN!");
+	}
+	else {
+		drawText(100, 510, "GAME OVER");
 	}
 
+	if (!hasResult) {
+		glColor3f(1.0f, 1.0f, 1.0f);
+		drawText(100, 400, "Waiting for server result...");
+	}
+	else {
+		// 표 제목
+		glColor3f(1.0f, 1.0f, 1.0f);
+		drawText(100, 430, "RANK");
+		drawText(250, 430, "PLAYER");
+		drawText(600, 430, "STARS");
+
+		// 서버 순서대로 순위 표시
+		for (int i = 0; i < endingRankCount_; ++i) {
+			const int id = endingRanks_[i].id;
+			const int stars = endingRanks_[i].starCount;
+
+			if (id < 0 || id >= MAX_PLAYER)
+				continue;
+
+			if (stars < 0 ||
+				stars > static_cast<int>(STAR_COUNT))
+				continue;
+
+			const float y = 360.0f - i * 70.0f;
+			char text[128]{};
+
+			if (id == g_myId)
+				glColor3f(0.3f, 1.0f, 0.6f);
+			else
+				glColor3f(1.0f, 1.0f, 1.0f);
+
+			sprintf_s(text, sizeof(text), "%d", i + 1);
+			drawText(100, y, text);
+
+			if (names[id][0] != '\0') {
+				sprintf_s(text, sizeof(text), "%s%s",
+					names[id],
+					id == g_myId ? " (ME)" : "");
+			}
+			else {
+				sprintf_s(text, sizeof(text), "Player %d%s",
+					id,
+					id == g_myId ? " (ME)" : "");
+			}
+
+			drawText(250, y, text);
+
+			sprintf_s(text, sizeof(text), "%d / %u",
+				stars, STAR_COUNT);
+			drawText(600, y, text);
+		}
+	}
+
+	glColor3f(0.7f, 0.7f, 0.7f);
+	drawText(100, 100, "Q: Quit");
+
+	// 기존 상태 복원
+	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
+
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_DEPTH_TEST);
+
+	glPopAttrib();
+	glUseProgram(static_cast<GLuint>(oldProgram));
+	glMatrixMode(static_cast<GLenum>(oldMatrixMode));
 }
 
 void GameWorld::startGame()

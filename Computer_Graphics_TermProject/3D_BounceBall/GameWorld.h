@@ -106,6 +106,11 @@ private:
 	int playerStarCount_[MAX_PLAYER]{}; // 플레이어 별 개수 추적
 	int totalStars_;
 
+	// 서버가 정렬해서 보내준 최종 순위
+	int endingRankCount_ = 0;
+	RankData endingRanks_[MAX_PLAYER]{};
+
+
 	// 세이브 포인트
 	glm::vec3 spawnPoint_;
 
