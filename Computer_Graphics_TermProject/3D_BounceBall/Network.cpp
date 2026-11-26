@@ -245,7 +245,18 @@ void ProcessServerPacket(char* buf)
         break;
     }
     case SC_LEAVE: {
-        PushNetEvent(buf);
+        SC_LEAVE_PACKET* p = (SC_LEAVE_PACKET*)buf;
+        int id = p->id;
+        if (id < 0 || id >= MAX_PLAYER || id == g_myId) break;
+
+        EnterCriticalSection(&g_csNet);
+        g_ghostNet[id].active = false;    // 고스트 제거
+        g_ghostNet[id].updated = false;
+        g_playerConnected[id] = false;    // 로비 목록에서 제거
+        g_playerReady[id] = false;
+        LeaveCriticalSection(&g_csNet);
+
+        printf("[LEAVE] player %d left\n", id);
         break;
     }
     default:
